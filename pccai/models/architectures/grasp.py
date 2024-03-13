@@ -119,9 +119,11 @@ class GeoResCompression(nn.Module):
         # Start the compression here
         x_coarse = scale_sparse_tensor(x, factor=self.scaling_ratio)
         filename_base = tag + '_B.bin'
+        print("Start base encoding...")
         start = time.monotonic()
         coord_codec(filename_base, x_coarse.C.detach().cpu()[:, 1:]) # encode with G-PCC losslessly
         base_enc_time = time.monotonic() - start
+        print(f"base encode completed in {base_enc_time}s")
         if self.skip_mode: # handle the skip mode
             string, min_v, max_v, shape = None, None, None, None
             del x
@@ -131,6 +133,7 @@ class GeoResCompression(nn.Module):
             x_c = x.C[:, 1:].float().unsqueeze(0)
             del x
             torch.cuda.empty_cache()
+            print("Start encoding residue")
             feat = self.res_enc(x_c, x_coarse_deq) # extract the geometric residual and perform encoding
 
             # Build low coarse point cloud with feat
@@ -139,6 +142,7 @@ class GeoResCompression(nn.Module):
                     coordinate_manager=x_coarse.coordinate_manager,
                     coordinate_map_key=x_coarse.coordinate_map_key)
 
+            print("Start voxel encoding...")
             y = self.vox_enc(x_feat) # voxel encoder
             y = sort_sparse_tensor_with_dir(y)
             shape = y.F.shape

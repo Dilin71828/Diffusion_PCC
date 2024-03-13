@@ -37,12 +37,15 @@ class PointResidualEncoder(nn.Module):
         self.faiss_resource, self.faiss_gpu_index_flat = None, None
         self.faiss_exact_search = True
 
-    def forward(self, x_orig, x_coarse):
+    def forward(self, x_orig, x_coarse, output_res = False):
 
         geo_subtraction = self.geo_subtraction_batch if self.phase =='train' else self.geo_subtraction
         geo_res = geo_subtraction(x_orig, x_coarse)
         feat = self.feat_gen(geo_res)
-        return feat
+        if (output_res):
+            return feat, geo_res
+        else:
+            return feat
 
     # This is to perform geometric subtraction for point clouds in a batch manner
     def geo_subtraction_batch(self, x_orig, x_coarse):
@@ -85,8 +88,7 @@ class PointResidualEncoder(nn.Module):
                             torch.max(geo_res[tot : tot + x_coarse_cur.shape[1], nn_cnt, :], dim=1)[0] <= self.thres_dist,
                             torch.min(geo_res[tot : tot + x_coarse_cur.shape[1], nn_cnt, :], dim=1)[0] >= -self.thres_dist
                          ) # False is outlier
- 
-                        seq_outlier = torch.arange(tot, x_coarse_cur.shape[1] + tot)[torch.logical_not(mask)]
+                        seq_outlier = torch.arange(tot, x_coarse_cur.shape[1] + tot).to(mask.device)[torch.logical_not(mask)]
                         geo_res[seq_outlier, nn_cnt, :] = geo_res[seq_outlier, nn_cnt - 1, :] # remove outliers from the NN set
                         idx_coarse = idx_coarse[mask.unsqueeze(0)] # remove outliers from the NN set
                         mask = torch.ones(x_orig_cur.shape[1], dtype=bool, device=x_orig.device)

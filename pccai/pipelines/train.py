@@ -85,7 +85,7 @@ def train_one_epoch(pccnet, dataloader, optimizer, aux_optimizer, writer, batch_
         if (points.shape[0] < dataloader.batch_size):
             batch_id -= 1
             break
-
+        
         points = points.cuda()
         optimizer.zero_grad()
         if aux_optimizer is not None:
@@ -186,6 +186,7 @@ def train_pccnet(opt):
         pccnet = torch.nn.DataParallel(pccnet)
         pccnet.to(torch.device("cuda:" + str(opt.device))) # 0 is the master
 
+    print(opt)
     # Take care of the dataset
     _, train_dataloader = point_cloud_dataloader(opt.train_data_config, syntax, opt.ddp)
     if opt.val_freq > 0:

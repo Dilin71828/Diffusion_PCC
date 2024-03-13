@@ -59,7 +59,7 @@ def benchmark_checkpoints(opt):
         else:
             pc_file_list += list(glob.iglob(item + '/**/*.ply', recursive=True))
             pc_file_list.sort()
-
+    print(f'pc_files: {pc_file_list}')
     for filename_ckpt in opt.checkpoints:
 
         log_dict_ckpt = []
@@ -80,6 +80,7 @@ def benchmark_checkpoints(opt):
             codec = get_codec_class(opt.codec_config['codec'])(opt.codec_config, pccnet, bit_depth, syntax) # initialize the codec
 
             # Load the point cloud and initialize the log_dict
+            print(pc_file)
             pc_raw = pc_read(pc_file)
             log_dict = {
                 'pc_name': os.path.split(pc_file)[1],
@@ -125,6 +126,7 @@ def benchmark_checkpoints(opt):
             # Write down the point cloud if needed
             if opt.pc_write_freq > 0 and idx % opt.pc_write_freq == 0 and opt.skip_decode == False:
                 filename_rec = os.path.join(opt.exp_folder, opt.write_prefix + os.path.splitext(log_dict['pc_name'])[0] + "_rec.ply")
+                print(f'Write reconstructed pc into {filename_rec}')
                 pc_write(pc_rec, filename_rec)
 
         elapse = time.monotonic() - t

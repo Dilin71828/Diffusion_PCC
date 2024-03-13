@@ -11,6 +11,7 @@ from pccai.models.modules.pointnet_residual import PointResidualEncoder
 from pccai.models.modules.mlpdecoder_sparse import MlpDecoderSparse
 from pccai.models.modules.spcnn_down import SparseCnnDown1, SparseCnnDown2
 from pccai.models.modules.spcnn_up import SparseCnnUp1, SparseCnnUp2
+from pccai.models.modules.diffusion_decoder import DiffusionPoints
 
 
 def get_module_class(module_name, hetero=False):
@@ -27,6 +28,7 @@ def get_module_class(module_name, hetero=False):
         'spcnn_up': [SparseCnnUp1, None],
         'spcnn_down2': [SparseCnnDown2, None],
         'spcnn_up2': [SparseCnnUp2, None],
+        'diffusion_decoder': [DiffusionPoints, None],
     }
 
     module = module_dict.get(module_name.lower(), None)
