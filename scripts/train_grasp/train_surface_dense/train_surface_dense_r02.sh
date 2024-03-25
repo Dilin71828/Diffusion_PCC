@@ -12,6 +12,7 @@ BETA="2.5" # rate trade-off
 SCALING_RATIO="0.25" # quantization ratio
 POINT_MUL="10" # point multiplication, also the number of neighbors to search
 SKIP_MODE="False" # skip mode
+SEED="42"
 
 # Logging settings
 PRINT_FREQ="20"

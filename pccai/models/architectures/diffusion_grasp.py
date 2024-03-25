@@ -30,7 +30,7 @@ class DiffusionGeoResCompression(nn.Module):
         
         net_config['res_enc']['k'] =  net_config['res_dec']['num_points'] = self.point_mul
         net_config['res_enc']['thres_dist'] = self.thres_dist
-        net_config['res_dec']['dims'][0] = net_config['vox_dec']['dims'][-1]
+        net_config['res_dec']['feature_dim'] = net_config['vox_dec']['dims'][-1]
 
         self.res_dec = get_module_class(net_config['res_dec']['model'], False)(net_config['res_dec'], syntax=syntax)
         self.vox_dec = get_module_class(net_config['vox_dec']['model'], False)(net_config['vox_dec'], syntax=syntax)
@@ -112,8 +112,9 @@ class DiffusionGeoResCompression(nn.Module):
         # for training, we don't perform the whole diffusion reconstruction process,
         # instead we apply the method from https://arxiv.org/abs/2006.11239
         diffusion_loss = self.res_dec.get_loss(res, feat.F)
-        pass
-
+        return {'diffusion_loss': diffusion_loss,
+                'likelihood': likelihood,
+                'gt': coords}
     pass
 
 def get_likelihood(entropy_bottleneck, data):

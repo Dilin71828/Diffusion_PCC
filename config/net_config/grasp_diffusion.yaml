@@ -17,7 +17,7 @@ modules:
         model: spcnn_up2
         dims: [8, 64, 32]
     res_dec:
-        model: diffusion_dec
+        model: diffusion_decoder
         training_steps: 100
         beta_1: 0.0001
         beta_T: 0.02

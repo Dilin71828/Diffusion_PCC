@@ -24,6 +24,7 @@ results/
 tmp/
 scripts/
 datasets
+*.ipynb
 
 # Created by gitignore.io
 ### Python ###

@@ -155,6 +155,7 @@ class GeoResCompression(nn.Module):
         """
         This function performs actual decompression with learned statistics of the entropy bottleneck, consumes one point cloud at a time.
         """
+        print("Decode base stream...")
         start = time.monotonic()
         y_C = coord_codec(filename_base) # decode with G-PCC losslessly
         base_dec_time[0] = time.monotonic() - start

@@ -60,6 +60,8 @@ def configure_optimization(pccnet, optim_config):
             scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=sche_args[1], gamma=sche_args[2])
     elif sche_args[0].lower() == 'multistep':
             scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=sche_args[1:-1], gamma=sche_args[-1])
+    elif sche_args[0].lower() == 'cosine_annealing':
+            scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max = sche_args[1])
     else: # 'fix' scheme
         scheduler = None
 
