@@ -57,7 +57,7 @@ class DiffusionGeoResCompression(nn.Module):
             x_coarse_deq = torch.hstack((x_coarse.C[:, 0:1], (x_coarse.C[:, 1:] / self.scaling_ratio)))
         
         # Downsample feature
-        feat = self.res_enc(x.C, x_coarse_deq)
+        feat, geo_res = self.res_enc(x.C, x_coarse_deq, output_res=True)
         x_feat = ME.SparseTensor(
             features=feat,
             coordinate_manager=x_coarse.coordinate_manager,
@@ -68,9 +68,13 @@ class DiffusionGeoResCompression(nn.Module):
 
         # Upsample feature
         feat = self.vox_dec(y_q, x_coarse)
+
+        diffusion_loss = self.res_dec.get_loss(geo_res, feat.F)
         
         # Diffusion decoder
-        res = self.res_dec.sample(feat.F)
+        return {'gt': coords,
+                'likelihoods': {'feats': likelihood},
+                'diffusion_loss': diffusion_loss}
 
     def get_loss(self, coords):
         # coords: [N, 4], [:,0] indicates batch index, the later 3 dims are 3d position

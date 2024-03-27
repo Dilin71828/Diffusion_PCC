@@ -105,7 +105,7 @@ class DiffusionPoints(nn.Module):
         batch_size=feature.shape[0]
         x_T = torch.randn([batch_size, self.net.num_points, 3]).to(feature.device)
         x=x_T
-        for t in range(self.training_steps, 0, -1):
+        for t in range(self.training_steps-1, 0, -1):
             alpha=self.alphas[t]
             alpha_bar=self.alpha_bars[t]
             z=torch.randn_like(x) if t>1 else torch.zeros_like(x)

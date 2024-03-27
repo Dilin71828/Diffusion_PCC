@@ -11,11 +11,13 @@ import torch.optim as optim
 
 # Import all the loss classes to be used
 from pccai.optim.cd_sparse import ChamferDistSparse
+from pccai.optim.diffsion_loss import DiffusionLoss
 
 
 # List the all the loss classes in the following dictionary 
 loss_classes = {
-    'cd_sparse': ChamferDistSparse
+    'cd_sparse': ChamferDistSparse,
+    'diffusion_loss': DiffusionLoss,
 }
 
 def get_loss_class(loss_name):
