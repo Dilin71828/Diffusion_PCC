@@ -11,11 +11,13 @@ import torch.optim as optim
 
 # Import all the loss classes to be used
 from pccai.optim.cd_sparse import ChamferDistSparse
+from pccai.optim.diffsion_loss import DiffusionLoss
 
 
 # List the all the loss classes in the following dictionary 
 loss_classes = {
-    'cd_sparse': ChamferDistSparse
+    'cd_sparse': ChamferDistSparse,
+    'diffusion_loss': DiffusionLoss,
 }
 
 def get_loss_class(loss_name):
@@ -60,6 +62,8 @@ def configure_optimization(pccnet, optim_config):
             scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=sche_args[1], gamma=sche_args[2])
     elif sche_args[0].lower() == 'multistep':
             scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=sche_args[1:-1], gamma=sche_args[-1])
+    elif sche_args[0].lower() == 'cosine_annealing':
+            scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max = sche_args[1])
     else: # 'fix' scheme
         scheduler = None
 

@@ -80,3 +80,17 @@ class ChamferDistSparse(PccLossBase):
         # R-D loss = alpha * D + beta * R
         loss_out["loss"] = self.alpha * loss_out['xyz_loss'] +  self.beta * loss_out["bpp_loss"] # R-D loss
         return loss_out
+    
+    def diffusion_loss(self, net_in, net_out):
+        loss_out = {}
+
+        if 'likelihoods' in net_out and len(net_out['likelihoods']) > 0:
+            self.bpp_loss(loss_out, net_out['lkielihoods'], net_out['gt'].shape[0])
+        else:
+            loss_out['bpp_loss'] = torch.zeros((1,))
+            if net_out['x_hat'].is_cuda:
+                loss_out['bpp_loss'] = loss_out['bpp_loss'].cuda()
+        
+        loss_out['diffusion_loss'] = net_out['diffusion_loss']
+        loss_out['loss'] = self.alppha*loss_out['diffusion_loss'] + self.beta*loss_out['bpp_loss']
+        return loss_out

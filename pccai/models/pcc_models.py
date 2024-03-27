@@ -9,11 +9,13 @@ from pccai.optim.utils import get_loss_class
 
 # Import all the architectures to be used
 from pccai.models.architectures.grasp import GeoResCompression
+from pccai.models.architectures.diffusion_grasp import DiffusionGeoResCompression
 
 # List the all the architectures in the following dictionary 
 # For a custom architecture, it is recommended to implement a compress() and a decompress() functions that can be called by the codec.
 architectures = {
     'grasp': GeoResCompression,
+    'diffusion': DiffusionGeoResCompression,
 }
 
 
@@ -42,4 +44,9 @@ class PccModelWithLoss(nn.Module):
         out = self.pcc_model(data)
         if self.loss is not None: out['loss'] = self.loss.loss(data, out)
 
+        return out
+    
+    def get_loss(self, data):
+        out = self.pcc_model.get_loss(data)
+        if self.loss is not None: out['loss'] = self.loss.diffusion_loss(data, out)
         return out

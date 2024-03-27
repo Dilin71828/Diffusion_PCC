@@ -65,15 +65,15 @@ class DiffusionNet(nn.Module):
         return out
     
 class DiffusionPoints(nn.Module):
-    def __init__(self, net_config):
+    def __init__(self, net_config, syntax):
         super().__init__()
         self.net = DiffusionNet(net_config)
         self.training_steps=net_config.get('training_steps', 100)
         self.beta_1 = net_config.get('beta_1', 1e-4)
         self.beta_T = net_config.get('beta_T', 0.02)   #use the timestep from https://arxiv.org/abs/2006.11239
-        self.betas=torch.linspace(self.beta_1, self.beta_T, steps=self.training_steps)
+        self.betas=torch.linspace(self.beta_1, self.beta_T, steps=self.training_steps).to('cuda')
         self.alphas = 1-self.betas
-        self.alpha_bars = torch.cumprod(self.alphas)
+        self.alpha_bars = torch.cumprod(self.alphas, 0)
         self.sigmas=torch.zeros_like(self.betas)
         for i in range(1, self.betas.shape[0]):
             self.sigmas[i]=((1-self.alpha_bars[i-1])/(1-self.alpha_bars[i]))*self.betas[i]
@@ -88,7 +88,7 @@ class DiffusionPoints(nn.Module):
         batch_size, residule_size, point_dim=x.size()
         # Randomly sample t for each residule block
         if t==None:
-            t=torch.randint(0, self.training_steps, (batch_size), device=x.device)
+            t=torch.randint(0, self.training_steps, (batch_size,), device=x.device)
         beta=self.betas[t]
         alpha_bar=self.alpha_bars[t]
 
@@ -105,7 +105,7 @@ class DiffusionPoints(nn.Module):
         batch_size=feature.shape[0]
         x_T = torch.randn([batch_size, self.net.num_points, 3]).to(feature.device)
         x=x_T
-        for t in range(self.training_steps, 0, -1):
+        for t in range(self.training_steps-1, 0, -1):
             alpha=self.alphas[t]
             alpha_bar=self.alpha_bars[t]
             z=torch.randn_like(x) if t>1 else torch.zeros_like(x)

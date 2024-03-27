@@ -1,19 +1,17 @@
 PY_NAME="${HOME_DIR}/experiments/train.py"
-SEED="42"
 
-# Main cnfigurations
-NET_CONFIG="${HOME_DIR}/config/net_config/grasp_dus2.yaml"
-OPTIM_CONFIG="${HOME_DIR}/config/optim_config/optim_cd_sparse.yaml"
+# Main configurations
+NET_CONFIG="${HOME_DIR}/config/net_config/grasp_diffusion.yaml"
+OPTIM_CONFIG="${HOME_DIR}/config/optim_config/optim_diffusion.yaml"
 TRAIN_DATA_CONFIG="${HOME_DIR}/config/data_config/modelnet_voxel_dense.yaml train_cfg"
 VAL_DATA_CONFIG="${HOME_DIR}/config/data_config/modelnet_voxel_dense.yaml val_cfg"
 
 # Method-specific parameters
 ALPHA="5" # distortion trade-off
-BETA="2" # rate trade-off
-SCALING_RATIO="0.25" # quantization ratio
+BETA="3" # rate trade-off
+SCALING_RATIO="0.125" # quantization ratio
 POINT_MUL="10" # point multiplication, also the number of neighbors to search
 SKIP_MODE="False" # skip mode
-SEED="42"
 
 # Logging settings
 PRINT_FREQ="20"

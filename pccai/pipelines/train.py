@@ -194,7 +194,7 @@ def train_pccnet(opt):
 
     # Configure the optimization stuffs
     optimizer, scheduler, aux_optimizer, aux_scheduler = configure_optimization(pccnet, opt.optim_config)
-    epoch_state = { 'last_epoch': -1, 'total_epoch': -1 }
+    epoch_state = { 'last_epoch': -1, 'total_epoch': opt.optim_config['n_epoch'] }
     # Load a saved model if given
     if opt.checkpoint != '':
         load_checkpoint(checkpoint_path=opt.checkpoint, with_optim=opt.checkpoint_optim_config, with_epoch_state=opt.checkpoint_epoch_state,
@@ -225,9 +225,8 @@ def train_pccnet(opt):
     total_epoch = epoch_state['total_epoch']
     while epoch < opt.optim_config['n_epoch']:
         epoch_state['last_epoch'] += 1
-        epoch_state['total_epoch'] += 1
+        #epoch_state['total_epoch'] += 1
         epoch = epoch_state['last_epoch']
-        total_epoch = epoch_state['total_epoch']
         if opt.ddp: train_dataloader.sampler.set_epoch(epoch) # This is to entertain DDP
 
         # Perform training of one epoch
