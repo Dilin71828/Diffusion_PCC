@@ -11,11 +11,13 @@ import numpy as np
 
 # Import all the codecs to be used
 from pccai.codecs.grasp_codec import GeoResCompressionCodec
+from pccai.codecs.diffusion_codec import DiffusionGeoResCompressionCodec
 
 
 # List the all the codecs in the following dictionary 
 codec_classes = {
-    'grasp_codec': GeoResCompressionCodec
+    'grasp_codec': GeoResCompressionCodec,
+    'diffusion_codec': DiffusionGeoResCompressionCodec,
 }
 
 def get_codec_class(codec_name):
