@@ -10,6 +10,9 @@ from pccai.models.utils_sparse import scale_sparse_tensor_batch, sort_sparse_ten
 
 #sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../third_party/PCGCv2'))
 from third_party.PCGCv2.entropy_model import EntropyBottleneck
+from third_party.PCGCv2.gpcc import gpcc_encode, gpcc_decode
+from third_party.PCGCv2.data_utils import read_ply_ascii_geo, write_ply_ascii_geo
+from third_party.PCGCv2.data_utils import scale_sparse_tensor
 
 class DiffusionGeoResCompression(nn.Module):
 
@@ -75,6 +78,77 @@ class DiffusionGeoResCompression(nn.Module):
         return {'gt': coords,
                 'likelihoods': {'feats': likelihood},
                 'diffusion_loss': diffusion_loss}
+    
+    def compress(self, x, tag):
+        """
+        This function performs actual compression with learned statistics of the entropy bottleneck, consumes one point cloud at a time.
+        """
+
+        # Start the compression here
+        x_coarse = scale_sparse_tensor(x, factor=self.scaling_ratio)
+        filename_base = tag + '_B.bin'
+        print("Start base encoding...")
+        start = time.monotonic()
+        coord_codec(filename_base, x_coarse.C.detach().cpu()[:, 1:]) # encode with G-PCC losslessly
+        base_enc_time = time.monotonic() - start
+        print(f"base encode completed in {base_enc_time}s")
+
+        x_coarse_deq = (x_coarse.C[:, 1:] / self.scaling_ratio).float().unsqueeze(0).contiguous()
+        x_c = x.C[:, 1:].float().unsqueeze(0)
+        del x
+
+        torch.cuda.empty_cache()
+        print("Start encoding residue...")
+        feat = self.res_enc(x_c, x_coarse_deq)
+        x_feat = ME.SparseTensor( # low bitdepth PC with attr
+                    features=feat,
+                    coordinate_manager=x_coarse.coordinate_manager,
+                    coordinate_map_key=x_coarse.coordinate_map_key)
+        
+        print("Start voxel encoding...")
+        y = self.vox_enc(x_feat) # voxel encoder
+        y = sort_sparse_tensor_with_dir(y)
+        shape = y.F.shape
+        string, min_v, max_v = self.entropy_bottleneck.compress(y.F.cpu())
+
+        return filename_base, [string], [min_v], [max_v], [shape], x_coarse.shape[0], base_enc_time
+    
+    def decompress(self, filename_base, string, min_v, max_v, shape, base_dec_time):
+        """
+        This function performs actual decompression with learned statistics of the entropy bottleneck, consumes one point cloud at a time.
+        """
+        print("Decode base stream...")
+        start = time.monotonic()
+        y_C = coord_codec(filename_base) # decode with G-PCC losslessly
+        base_dec_time[0] = time.monotonic() - start
+        y_C = torch.cat((torch.zeros((len(y_C), 1)).int(), torch.tensor(y_C).int()), dim=-1)
+
+        # From y_C, create the downsampled versions of y_C for decoding
+        device = next(self.parameters()).device
+        y_dummy = ME.SparseTensor(
+                features=torch.ones((y_C.shape[0], 1), device=device),
+                coordinates=y_C, 
+                tensor_stride=1, 
+                device=device
+            )
+        del y_C
+        torch.cuda.empty_cache()
+
+        y_ds = self.pool(y_dummy if self.dus == 1 else self.pool(y_dummy))
+        y_ds = sort_sparse_tensor_with_dir(y_ds)
+        y_F = self.entropy_bottleneck.decompress(string[0], min_v[0], max_v[0], shape[0], channels=shape[0][-1])
+        y_down = ME.SparseTensor(features=y_F, device=device,
+                coordinate_manager=y_ds.coordinate_manager,
+                coordinate_map_key=y_ds.coordinate_map_key)
+        
+        print("Decode features...")
+        y_dec = self.vox_dec(y_down, y_dummy) # feature decoder
+        y_dec_C = (y_dec.C[:, 1:] / self.scaling_ratio).float().contiguous()
+
+        print("Diffusion decoding...")
+        decoded_res = self.res_dec.sample(y_dec.F)
+        out = y_dec_C.repeat_interleave(self.point_mul, dim=0) + decoded_res
+        return out
 
     def get_loss(self, coords):
         # coords: [N, 4], [:,0] indicates batch index, the later 3 dims are 3d position
@@ -130,3 +204,16 @@ def get_likelihood(entropy_bottleneck, data):
         device=data.device
     )
     return data_Q, likelihood
+
+def coord_codec(bin_filename, coords=None):
+    ply_filename = bin_filename + '.ply'
+    if coords == None: # decode
+        gpcc_decode(bin_filename, ply_filename)
+        out = read_ply_ascii_geo(ply_filename)
+    else: # encode
+        coords = coords.numpy().astype('int')
+        write_ply_ascii_geo(filedir=ply_filename, coords=coords)
+        gpcc_encode(ply_filename, bin_filename)
+        out = bin_filename
+    os.system('rm '+ ply_filename)
+    return out
