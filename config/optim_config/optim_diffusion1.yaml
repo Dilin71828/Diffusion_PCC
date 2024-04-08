@@ -2,7 +2,7 @@ n_epoch: 100
 main_args:
     lr: 0.0008
     opt_args: [0.9, 0.999, 0]
-    schedule_args: ['cosine_annealing', 50]
+    schedule_args: ['cosine_annealing', 100]
 loss_args:
     loss: diffusion_loss
     alpha: 5
