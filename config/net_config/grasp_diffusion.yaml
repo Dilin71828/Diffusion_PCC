@@ -20,7 +20,7 @@ modules:
         model: diffusion_decoder
         training_steps: 100
         beta_1: 0.0001
-        beta_T: 0.02
+        beta_T: 0.05
         num_points: 10
         t_emb_dim: 16
         feature_dim: 16

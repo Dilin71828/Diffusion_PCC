@@ -70,7 +70,7 @@ class DiffusionPoints(nn.Module):
         self.net = DiffusionNet(net_config)
         self.training_steps=net_config.get('training_steps', 100)
         self.beta_1 = net_config.get('beta_1', 1e-4)
-        self.beta_T = net_config.get('beta_T', 0.02)   #use the timestep from https://arxiv.org/abs/2006.11239
+        self.beta_T = net_config.get('beta_T', 0.05)   #use the timestep from https://arxiv.org/abs/2006.11239
         self.betas=torch.linspace(self.beta_1, self.beta_T, steps=self.training_steps).to('cuda')
         self.alphas = 1-self.betas
         self.alpha_bars = torch.cumprod(self.alphas, 0)
@@ -116,4 +116,5 @@ class DiffusionPoints(nn.Module):
             beta=self.betas[[t]*batch_size]
             noise_pred=self.net(x, beta, feature)
             x=c0*(x - c1*noise_pred) + sigma*z
+            x = x.detach()
         return x
