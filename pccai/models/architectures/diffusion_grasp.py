@@ -72,7 +72,7 @@ class DiffusionGeoResCompression(nn.Module):
         # Upsample feature
         feat = self.vox_dec(y_q, x_coarse)
 
-        diffusion_loss = self.res_dec.get_loss(geo_res*self.scaling_ratio, feat.F)  # need to normalize the geo residue
+        diffusion_loss = self.res_dec.get_loss(geo_res/self.thres_dist, feat.F)  # need to normalize the geo residue into [-1,1]
         
         # Diffusion decoder
         return {'gt': coords,
@@ -149,7 +149,7 @@ class DiffusionGeoResCompression(nn.Module):
         decoded_res = self.res_dec.sample(y_dec.F)
         print(decoded_res.shape)
         print(y_dec_C.shape)
-        out = y_dec_C.repeat_interleave(self.point_mul, dim=0) + decoded_res.reshape(-1,3)/self.scaling_ratio
+        out = y_dec_C.repeat_interleave(self.point_mul, dim=0) + decoded_res.reshape(-1,3)*self.thres_dist
         return out
 
     def get_loss(self, coords):
