@@ -72,6 +72,7 @@ class DiffusionPoints(nn.Module):
         self.beta_1 = net_config.get('beta_1', 1e-4)
         self.beta_T = net_config.get('beta_T', 0.05)   #use the timestep from https://arxiv.org/abs/2006.11239
         self.betas=torch.linspace(self.beta_1, self.beta_T, steps=self.training_steps).to('cuda')
+        self.betas = torch.cat([torch.zeros([1]), self.betas], dim=0) #padding
         self.alphas = 1-self.betas
         self.alpha_bars = torch.cumprod(self.alphas, 0)
         self.sigmas=torch.zeros_like(self.betas)
@@ -82,7 +83,7 @@ class DiffusionPoints(nn.Module):
     def get_loss(self, x, feature, t=None):
         """
         Args:
-            x: Input residules, (B, N, 3)
+            x: Input residues, (B, N, 3)
             feature: Encoded feature vectors, (B, F)
         """
         batch_size, residule_size, point_dim=x.size()
@@ -101,20 +102,27 @@ class DiffusionPoints(nn.Module):
         
         return loss
     
-    def sample(self, feature):
+    def sample(self, feature, return_traj = False):
         batch_size=feature.shape[0]
         x_T = torch.randn([batch_size, self.net.num_points, 3]).to(feature.device)
-        x=x_T
-        for t in range(self.training_steps-1, 0, -1):
+        traj = {self.training_steps: x_T}
+        for t in range(self.training_steps, 0, -1):
             alpha=self.alphas[t]
             alpha_bar=self.alpha_bars[t]
-            z=torch.randn_like(x) if t>1 else torch.zeros_like(x)
+            z=torch.randn_like(x_T) if t>1 else torch.zeros_like(x_T)
             sigma = self.sigmas[t]
 
             c0=1.0/torch.sqrt(alpha)
             c1=(1-alpha)/torch.sqrt(1-alpha_bar)
             beta=self.betas[[t]*batch_size]
-            noise_pred=self.net(x, beta, feature)
-            x=c0*(x - c1*noise_pred) + sigma*z
-            x = x.detach()
-        return x
+            x_t = traj[t]
+            noise_pred=self.net(x_t, beta, feature)
+            x_next=c0*(x_t - c1*noise_pred) + sigma*z
+            traj[t-1] = x_next.detach()
+            traj[t] = traj[t].cpu()
+            if not return_traj:
+                del traj[t]
+        if return_traj:
+            return traj
+        else:
+            return traj[0]
