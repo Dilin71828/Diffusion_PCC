@@ -1,0 +1,10 @@
+n_epoch: 200
+main_args:
+    lr: 0.0008
+    opt_args: [0.9, 0.999, 0]
+    schedule_args: ['cosine_annealing', 200]
+loss_args:
+    loss: diffusion_loss
+    alpha: 5
+    beta: 1
+clip_max_norm: -1
