@@ -91,6 +91,8 @@ def benchmark_checkpoints(opt):
                 log_dict['seq_name'] = os.path.basename(os.path.dirname(pc_file))
 
             with torch.no_grad():
+                torch.cuda.empty_cache()
+                
                 # Encode pc_raw with pccnet, obtain compressed_files
                 compressed_files, stat_dict_enc = codec.compress(pc_raw, tag=os.path.join(tmp_folder, os.path.splitext(log_dict['pc_name'])[0] + '_' + opt.exp_name))
 
