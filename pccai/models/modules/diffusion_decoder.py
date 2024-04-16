@@ -72,6 +72,7 @@ class DiffusionPoints(nn.Module):
         self.training_steps=net_config.get('training_steps', 100)
         self.beta_1 = net_config.get('beta_1', 1e-4)
         self.beta_T = net_config.get('beta_T', 0.05)   #use the timestep from https://arxiv.org/abs/2006.11239
+        self.betas=torch.linspace(self.beta_1, self.beta_T, steps=self.training_steps).to('cuda')
         self.betas = torch.cat([torch.zeros([1]).to('cuda'), self.betas], dim=0) #padding
         self.alphas = 1-self.betas
         self.alpha_bars = torch.cumprod(self.alphas, 0)
@@ -123,7 +124,7 @@ class DiffusionPoints(nn.Module):
                 x_T = 0.
         else:
             x_T = x_init
-            
+
         if start_step == None:
             start_step = self.training_steps
         traj = {start_step: x_T}
