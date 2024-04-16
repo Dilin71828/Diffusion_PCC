@@ -72,7 +72,6 @@ class DiffusionPoints(nn.Module):
         self.training_steps=net_config.get('training_steps', 100)
         self.beta_1 = net_config.get('beta_1', 1e-4)
         self.beta_T = net_config.get('beta_T', 0.05)   #use the timestep from https://arxiv.org/abs/2006.11239
-        self.betas=torch.linspace(self.beta_1, self.beta_T, steps=self.training_steps).to('cuda')
         self.betas = torch.cat([torch.zeros([1]).to('cuda'), self.betas], dim=0) #padding
         self.alphas = 1-self.betas
         self.alpha_bars = torch.cumprod(self.alphas, 0)
@@ -112,17 +111,23 @@ class DiffusionPoints(nn.Module):
         c1 = torch.sqrt(1-alpha_bar).view(-1,1,1)
         return c0*x + c1*noise
     
-    def sample(self, feature, return_traj = False, x_coarse = None):
+    def sample(self, feature, return_traj = False, x_coarse = None, start_step = None, x_init = None):
         batch_size=feature.shape[0]
-        if self.init_method == 'gaussian':
-            x_T = torch.randn([batch_size, self.net.num_points, 3]).to(feature.device)
-        elif self.init_method == 'plane':
-            # estimate normal using open3d
-            pcd = o3d.t.geometry.PointCloud(x_coarse.cpu().numpy())
-            pcd.estimate_normals(max_nn = self.max_nn, radius = self.radius)
-            x_T = 0.
-        traj = {self.training_steps: x_T}
-        for t in range(self.training_steps, 0, -1):
+        if x_init==None:
+            if self.init_method == 'gaussian':
+                x_T = torch.randn([batch_size, self.net.num_points, 3]).to(feature.device)
+            elif self.init_method == 'plane':
+                # estimate normal using open3d
+                pcd = o3d.t.geometry.PointCloud(x_coarse.cpu().numpy())
+                pcd.estimate_normals(max_nn = self.max_nn, radius = self.radius)
+                x_T = 0.
+        else:
+            x_T = x_init
+            
+        if start_step == None:
+            start_step = self.training_steps
+        traj = {start_step: x_T}
+        for t in range(start_step, 0, -1):
             alpha=self.alphas[t]
             alpha_bar=self.alpha_bars[t]
             z=torch.randn_like(x_T) if t>1 else torch.zeros_like(x_T)
