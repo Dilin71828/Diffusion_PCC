@@ -24,4 +24,5 @@ modules:
         num_points: 10
         t_emb_dim: 16
         feature_dim: 16
+        init_method: gaussian
 
