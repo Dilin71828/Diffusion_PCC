@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import open3d as o3d
 
 class ConcatSquashLinear(nn.Module):
     def __init__(self, dim_in, dim_out, dim_ctx):
@@ -79,6 +80,7 @@ class DiffusionPoints(nn.Module):
         for i in range(1, self.betas.shape[0]):
             self.sigmas[i]=((1-self.alpha_bars[i-1])/(1-self.alpha_bars[i]))*self.betas[i]
         self.sigmas = torch.sqrt(self.sigmas)
+        self.init_method = net_config.get('init_method', 'gaussian')
 
     def get_loss(self, x, feature, t=None):
         """
@@ -102,9 +104,23 @@ class DiffusionPoints(nn.Module):
         
         return loss
     
-    def sample(self, feature, return_traj = False):
+    def noisy(self, x, t):
+        beta = self.betas[t]
+        alpha_bar = self.alpha_bars[t]
+        noise = torch.randn_like(x)
+        c0 = torch.sqrt(alpha_bar).view(-1,1,1)
+        c1 = torch.sqrt(1-alpha_bar).view(-1,1,1)
+        return c0*x + c1*noise
+    
+    def sample(self, feature, return_traj = False, x_coarse = None):
         batch_size=feature.shape[0]
-        x_T = torch.randn([batch_size, self.net.num_points, 3]).to(feature.device)
+        if self.init_method == 'gaussian':
+            x_T = torch.randn([batch_size, self.net.num_points, 3]).to(feature.device)
+        elif self.init_method == 'plane':
+            # estimate normal using open3d
+            pcd = o3d.t.geometry.PointCloud(x_coarse.cpu().numpy())
+            pcd.estimate_normals(max_nn = self.max_nn, radius = self.radius)
+            x_T = 0.
         traj = {self.training_steps: x_T}
         for t in range(self.training_steps, 0, -1):
             alpha=self.alphas[t]
