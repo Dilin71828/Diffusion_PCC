@@ -146,7 +146,7 @@ class DiffusionGeoResCompression(nn.Module):
         y_dec_C = (y_dec.C[:, 1:] / self.scaling_ratio).float().contiguous()
 
         print("Diffusion decoding...")
-        decoded_res = self.res_dec.sample(y_dec.F)
+        decoded_res = self.res_dec.sample(y_dec.F, x_coarse = y_dec_C*2/self.thres_dist)
         print(decoded_res.shape)
         print(y_dec_C.shape)
         out = y_dec_C.repeat_interleave(self.point_mul, dim=0) + decoded_res.reshape(-1,3)*self.thres_dist/2
