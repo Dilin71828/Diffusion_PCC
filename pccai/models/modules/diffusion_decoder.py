@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 import open3d as o3d
 import scipy.linalg
+import gc
 
 import faiss
 import faiss.contrib.torch_utils
@@ -143,6 +144,9 @@ class DiffusionPoints(nn.Module):
                 x_T = self.quad_fit(x_coarse = x_coarse, device=feature.device)  
         else:
             x_T = x_init
+
+        gc.collect()
+        torch.cuda.empty_cache()
 
         if start_step == None:
             start_step = self.training_steps
