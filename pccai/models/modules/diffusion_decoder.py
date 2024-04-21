@@ -152,6 +152,7 @@ class DiffusionPoints(nn.Module):
             start_step = self.training_steps
         traj = {start_step: x_T}
         for t in range(start_step, 0, -1):
+            print(f'step: {t}')
             alpha=self.alphas[t]
             alpha_bar=self.alpha_bars[t]
             z=torch.randn_like(x_T) if t>1 else torch.zeros_like(x_T)
