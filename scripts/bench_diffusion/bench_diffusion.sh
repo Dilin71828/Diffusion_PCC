@@ -1,7 +1,7 @@
 PY_NAME="${HOME_DIR}/experiments/bench.py"
 
 # Main configurations
-CHECKPOINTS="${HOME_DIR}/results/grasp_diffusion/r01.pth"
+CHECKPOINTS="${HOME_DIR}/results/grasp_diffusion/r01_epoch200.pth"
 CHECKPOINT_NET_CONFIG="True"
 CODEC_CONFIG="${HOME_DIR}/config/codec_config/grasp_diffusion.yaml"
 INPUT="${HOME_DIR}/datasets/cat1/A/soldier_viewdep_vox12.ply ${HOME_DIR}/datasets/cat1/A/boxer_viewdep_vox12.ply ${HOME_DIR}/datasets/cat1/A/Facade_00009_vox12.ply ${HOME_DIR}/datasets/cat1/A/House_without_roof_00057_vox12.ply"

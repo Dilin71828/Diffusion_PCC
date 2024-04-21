@@ -76,6 +76,7 @@ def benchmark_checkpoints(opt):
         t = time.monotonic()
         for idx, pc_file in enumerate(pc_file_list):
 
+            torch.cuda.empty_cache()
             bit_depth = opt.bit_depth[0 if len(opt.bit_depth) == 1 else idx] # support testing several point clouds with different bit-depths, individual bit_depths need to be provided in this case
             codec = get_codec_class(opt.codec_config['codec'])(opt.codec_config, pccnet, bit_depth, syntax) # initialize the codec
 
