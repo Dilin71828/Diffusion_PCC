@@ -20,6 +20,7 @@ class DiffusionGeoResCompressionCodec(PccCodecBase):
         self.res = 2 ** bit_depth
         pccnet.base_only = codec_config.get('base_only', False)
         pccnet.res_enc.faiss = codec_config.get('faiss', True) and found_FAISS == True
+        pccnet.res_dec.start_step = codec_config.get('start_step', None)
         self.slice = codec_config.get('slice', 0)
         
         if bit_depth >= 12 and bit_depth <= 16:
