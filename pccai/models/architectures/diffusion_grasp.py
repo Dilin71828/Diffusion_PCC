@@ -146,7 +146,8 @@ class DiffusionGeoResCompression(nn.Module):
         y_dec_C = (y_dec.C[:, 1:] / self.scaling_ratio).float().contiguous()
 
         print("Diffusion decoding...")
-        decoded_res = self.res_dec.sample(y_dec.F, x_coarse = y_dec_C*2/self.thres_dist,
+        with torch.no_grad():
+            decoded_res = self.res_dec.sample(y_dec.F, x_coarse = y_dec_C*2/self.thres_dist,
                                            start_step = self.res_dec.start_step)
         print(decoded_res.shape)
         print(y_dec_C.shape)

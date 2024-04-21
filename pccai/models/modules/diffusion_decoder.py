@@ -166,6 +166,8 @@ class DiffusionPoints(nn.Module):
             traj[t] = traj[t].cpu()
             if not return_traj:
                 del traj[t]
+            gc.collect()
+            torch.cuda.empty_cache()
         if return_traj:
             return traj
         else:
