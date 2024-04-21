@@ -116,7 +116,6 @@ class DiffusionPoints(nn.Module):
         c1 = torch.sqrt(1-alpha_bar).view(-1,1,1)
         return c0*x + c1*noise
     
-    @torch.no_grad()
     def sample(self, feature, return_traj = False, x_coarse = None, start_step = None, x_init = None):
         batch_size=feature.shape[0]
         if x_init==None:
