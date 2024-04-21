@@ -141,7 +141,7 @@ class DiffusionPoints(nn.Module):
                 eps2 = (torch.rand([batch_size, self.net.num_points, 1])**(0.5)*self.sample_radius).repeat(1, 1, 3)
                 x_T = torch.cos(eps1)*eps2*tangents + torch.sin(eps1)*eps2*bitangents
             elif self.init_method == 'quad':
-                x_T = self.quad_fit(x_coarse = x_coarse, device=feature.device)  
+                x_T = self.quad_fit(x_coarse = x_coarse, device=feature.device).detach()
         else:
             x_T = x_init
 
