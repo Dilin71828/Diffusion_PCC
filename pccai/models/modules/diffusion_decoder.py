@@ -223,5 +223,5 @@ class DiffusionPoints(nn.Module):
             torch.einsum('ijk,ik->ij',sample_coord,bitangents).reshape(-1,self.net.num_points,1),
             torch.einsum('ijk,ik->ij',sample_coord,normals).reshape(-1,self.net.num_points,1)
         ], dim=2)
-        x_T = sample_coord.scatter(dim=2,index=axis_index[:,::self.num_points_fit,:].repeat(1, self.net.num_points),src=sample_coord)
+        x_T = sample_coord.scatter(dim=2,index=axis_index[:,::self.num_points_fit,:].repeat(1, self.net.num_points,1),src=sample_coord)
         return x_T
