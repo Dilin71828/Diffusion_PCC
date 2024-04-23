@@ -207,9 +207,6 @@ class DiffusionPoints(nn.Module):
         eps2 = torch.rand([batch_size, self.net.num_points, 1], device=device)**(0.5)*self.sample_radius
         sample_x = torch.cos(eps1)*eps2
         sample_y = torch.sin(eps1)*eps2
-        sample_quad_coord = torch.cat([torch.ones((neighbors.shape[0],self.net.num_points,1),device='cuda'),
-                                       sample_x,sample_y,sample_x**2,sample_y**2,sample_x*sample_y],dim=2)
-        sample_z = torch.einsum('ijk,ik->ij',sample_quad_coord, params.squeeze(2)).reshape(sample_x.shape)
         # transform to world space
         normals = normals/normals.norm(dim=1).reshape(-1,1).repeat(1,3)
         tangents = normals.cross(torch.tensor([[0,0,1.]]*normals.shape[0],device='cuda'),dim=1)
@@ -217,12 +214,17 @@ class DiffusionPoints(nn.Module):
         tangents[tangents_norm<1e-8] = torch.tensor([0,1.,0],device='cuda')
         tangents = tangents/tangents.norm(dim=1).reshape(-1,1).repeat(1,3)  # [B,3]
         bitangents = normals.cross(tangents,dim=1)
-        bitangents = bitangents/bitangents.norm(dim=1).reshape(-1,1).repeat(1,3) # [B,3
-        sample_coord = torch.cat([sample_x,sample_y,sample_z],dim=2)
+        bitangents = bitangents/bitangents.norm(dim=1).reshape(-1,1).repeat(1,3) # [B,3]
+        sample_coord = torch.cat([sample_x,sample_y,torch.zeros_like(sample_x)],dim=2)
         sample_coord = torch.cat([
             torch.einsum('ijk,ik->ij',sample_coord,tangents).reshape(-1,self.net.num_points,1),
             torch.einsum('ijk,ik->ij',sample_coord,bitangents).reshape(-1,self.net.num_points,1),
             torch.einsum('ijk,ik->ij',sample_coord,normals).reshape(-1,self.net.num_points,1)
         ], dim=2)
+        sample_x = sample_coord[:,:,0].reshape(sample_coord.shape[0],self.net.num_points,1)
+        sample_y = sample_coord[:,:,1].reshape(sample_coord.shape[0],self.net.num_points,1)
+        sample_quad_coord = torch.cat([torch.ones((neighbors.shape[0],self.net.num_points,1),device='cuda'),
+                                       sample_x,sample_y,sample_x**2,sample_y**2,sample_x*sample_y],dim=2)
+        sample_coord[:,:,2] = torch.einsum('ijk,ik->ij',sample_quad_coord, params.squeeze(2))
         x_T = sample_coord.scatter(dim=2,index=axis_index[:,::self.num_points_fit,:].repeat(1, self.net.num_points,1),src=sample_coord)
         return x_T
