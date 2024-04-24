@@ -186,6 +186,7 @@ def train_pccnet(opt):
         pccnet = torch.nn.DataParallel(pccnet)
         pccnet.to(torch.device("cuda:" + str(opt.device))) # 0 is the master
 
+    logger.log.info(opt)
     print(opt)
     # Take care of the dataset
     _, train_dataloader = point_cloud_dataloader(opt.train_data_config, syntax, opt.ddp)
