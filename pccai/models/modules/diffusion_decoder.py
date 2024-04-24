@@ -203,7 +203,7 @@ class DiffusionPoints(nn.Module):
         A = torch.cat([torch.ones((neighbors.shape[0],self.num_points_fit,1),device=device),
                        coord_x, coord_y, coord_x**2, coord_y**2, coord_x*coord_y],dim=2)
         params = torch.linalg.lstsq(A, coord_z)[0]
-        normals = torch.cat([params[:,1], params[:,2], -torch.ones((neighbors.shape[0],1),device=device)], dim=1) #calculate normal at x=0, y=0
+        normals = -torch.cat([params[:,1], params[:,2], -torch.ones((neighbors.shape[0],1),device=device)], dim=1) #calculate normal at x=0, y=0
         #sample data in disk area
         eps1 = torch.rand([batch_size, self.net.num_points, 1], device=device)*np.pi*2
         eps2 = torch.rand([batch_size, self.net.num_points, 1], device=device)**(0.5)*self.sample_radius
@@ -229,4 +229,5 @@ class DiffusionPoints(nn.Module):
                                        sample_x,sample_y,sample_x**2,sample_y**2,sample_x*sample_y],dim=2)
         sample_coord[:,:,2] = torch.einsum('ijk,ik->ij',sample_quad_coord, params.squeeze(2))
         x_T = sample_coord.scatter(dim=2,index=axis_index[:,::self.num_points_fit,:].repeat(1, self.net.num_points,1),src=sample_coord)
+        x_T = x_T.clamp(-self.sample_radius*2, self.sample_radius*2)
         return x_T
