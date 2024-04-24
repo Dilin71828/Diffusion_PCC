@@ -147,6 +147,7 @@ class DiffusionPoints(nn.Module):
         gc.collect()
         torch.cuda.empty_cache()
 
+        print('Start diffusion denoising...')
         if start_step == None:
             start_step = self.training_steps
         traj = {start_step: x_T}
@@ -160,6 +161,7 @@ class DiffusionPoints(nn.Module):
             c1=(1-alpha)/torch.sqrt(1-alpha_bar)
             beta=self.betas[[t]*batch_size]
             x_t = traj[t]
+            print(f'Debug: x_{t}: max{x_t.max()}, min{x_t.min()}')
             noise_pred=self.net(x_t, beta, feature)
             x_next=c0*(x_t - c1*noise_pred) + sigma*z
             traj[t-1] = x_next.detach()
