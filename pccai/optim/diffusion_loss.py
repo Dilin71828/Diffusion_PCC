@@ -9,7 +9,7 @@ class DiffusionLoss(PccLossBase):
     def __init__(self, loss_args, syntax):
         super().__init__(loss_args, syntax)
         self.enable_warmup = loss_args['enable_warmup']
-        self.warmup_epochs = loss_args['warmup_epochs']
+        self.warmup_epochs = loss_args.get('warmup_epochs', 0)
         self.warmup_beta = loss_args['warmup_beta']
         self.cur_epoch = 1
 
