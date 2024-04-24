@@ -149,8 +149,7 @@ class DiffusionGeoResCompression(nn.Module):
         with torch.no_grad():
             decoded_res = self.res_dec.sample(y_dec.F, x_coarse = y_dec_C*2/self.thres_dist,
                                            start_step = self.res_dec.start_step)
-        print(decoded_res.shape)
-        print(y_dec_C.shape)
+        print(f"Debug: decoded res: max{decoded_res.max()}, min{decoded_res.min()}")
         out = y_dec_C.repeat_interleave(self.point_mul, dim=0) + decoded_res.reshape(-1,3)*self.thres_dist/2
         return out
 
