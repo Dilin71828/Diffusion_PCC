@@ -10,6 +10,9 @@ import faiss
 import faiss.contrib.torch_utils
 
 from diffusion_decoder import DiffusionNet
+from third_party.nndistance.modules.nnd import NNDModule
+
+nndistance = NNDModule()
     
 class DiffusionPointsV2(nn.Module):
     """
@@ -34,6 +37,7 @@ class DiffusionPointsV2(nn.Module):
         self.sample_radius = net_config.get('sample_radius', 1)
         self.num_points_fit = net_config.get('num_pooints_fit', 20)
         self.thres_dist = net_config.get('thres_dist', 10)
+        self.loss_mode = net_config.get('loss_mode', 'MSE')
 
         self.faiss_resource, self.faiss_gpu_index_flat = None, None
 
@@ -55,7 +59,12 @@ class DiffusionPointsV2(nn.Module):
         c1 = torch.sqrt(1-alpha_bar).view(-1,1,1)  # (B,1,1)
         x_pred = self.net(c0*x+c1*noise, beta, feature)
         weights = alpha_bar/(1-alpha_bar)
-        loss = (((x_pred-x)**2).sum(dim=(1,2))*weights).mean()
+
+        if self.loss_mode=='MSE':
+            loss = (((x_pred-x)**2).sum(dim=(1,2))*weights).mean()
+        elif self.loss_mode=='CD':
+            dist_out,dist_x,_,_ = nndistance(x, x_pred)
+            loss = (torch.max(dist_out.mean(dim=1),dist_x.mean(dim=1))*weights).mean()
         
         return loss
     
@@ -103,7 +112,6 @@ class DiffusionPointsV2(nn.Module):
             start_step = self.training_steps
         traj = {start_step: x_T}
         for t in range(start_step, 0, -1):
-            alpha=self.alphas[t]
             alpha_bar=self.alpha_bars[t]
             beta=self.betas[[t]*batch_size]
             x_t = traj[t]
