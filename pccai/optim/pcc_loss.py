@@ -42,3 +42,6 @@ class PccLossBase:
         """Needs to implement the overall loss. Can be R-D loss for lossy compression, or rate-only loss for lossless compression."""
 
         raise NotImplementedError()
+    
+    def step(self, **kwargs):
+        pass

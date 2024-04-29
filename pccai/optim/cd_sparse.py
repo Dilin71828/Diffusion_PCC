@@ -85,7 +85,7 @@ class ChamferDistSparse(PccLossBase):
         loss_out = {}
 
         if 'likelihoods' in net_out and len(net_out['likelihoods']) > 0:
-            self.bpp_loss(loss_out, net_out['lkielihoods'], net_out['gt'].shape[0])
+            self.bpp_loss(loss_out, net_out['likelihoods'], net_out['gt'].shape[0])
         else:
             loss_out['bpp_loss'] = torch.zeros((1,))
             if net_out['x_hat'].is_cuda:

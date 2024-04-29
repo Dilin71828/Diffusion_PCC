@@ -72,7 +72,7 @@ def load_checkpoint(checkpoint_path, with_optim, with_epoch_state, pccnet, epoch
         logger.log.info("Optimization parameters loaded.\n")
 
 
-def train_one_epoch(pccnet, dataloader, optimizer, aux_optimizer, writer, batch_total, opt):
+def train_one_epoch(pccnet, dataloader, optimizer, aux_optimizer, writer, batch_total, opt, cur_epoch):
     """Train one epoch with the model, the specified loss, optimizers, scheduler, etc."""
 
     pccnet.train() # set model to training mode
@@ -131,6 +131,7 @@ def train_one_epoch(pccnet, dataloader, optimizer, aux_optimizer, writer, batch_
         batch_total += 1
 
     for k in avg_loss.keys(): avg_loss[k] = avg_loss[k] / (batch_id + 1) # the average loss
+    pccnet.step()
     return avg_loss, batch_total
 
 
@@ -186,6 +187,7 @@ def train_pccnet(opt):
         pccnet = torch.nn.DataParallel(pccnet)
         pccnet.to(torch.device("cuda:" + str(opt.device))) # 0 is the master
 
+    logger.log.info(opt)
     print(opt)
     # Take care of the dataset
     _, train_dataloader = point_cloud_dataloader(opt.train_data_config, syntax, opt.ddp)
@@ -234,7 +236,7 @@ def train_pccnet(opt):
         aux_lr = aux_optimizer.param_groups[0]['lr'] if aux_optimizer is not None else None
         logger.log.info(f'Training at epoch {epoch} (total {total_epoch}) with lr {lr}' +
                         (f' and aux_lr {aux_lr}' if aux_scheduler is not None else ''))
-        avg_loss, batch_total = train_one_epoch(pccnet, train_dataloader, optimizer, aux_optimizer, writer, batch_total, opt)
+        avg_loss, batch_total = train_one_epoch(pccnet, train_dataloader, optimizer, aux_optimizer, writer, batch_total, opt, epoch)
 
         if scheduler is not None:
             scheduler.step()
