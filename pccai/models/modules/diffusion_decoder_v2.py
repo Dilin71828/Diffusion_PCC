@@ -9,7 +9,7 @@ import gc
 import faiss
 import faiss.contrib.torch_utils
 
-from diffusion_decoder import DiffusionNet
+from pccai.models.modules.diffusion_decoder import DiffusionNet
 from third_party.nndistance.modules.nnd import NNDModule
 
 nndistance = NNDModule()
@@ -119,6 +119,7 @@ class DiffusionPointsV2(nn.Module):
             noise = (x_t - torch.sqrt(alpha_bar)*x_pred)/torch.sqrt(1-alpha_bar) if t>1 else torch.zeros_like(x_T)
 
             alpha_prev = self.alphas[t-1]
+            # DDIM sample
             x_next = torch.sqrt(alpha_prev)*x_pred + torch.sqrt(1-alpha_prev)*noise
 
             print(f'Debug: x_{t}: max{x_t.max()}, min{x_t.min()}')
