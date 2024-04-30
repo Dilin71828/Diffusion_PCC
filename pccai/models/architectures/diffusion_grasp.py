@@ -8,8 +8,7 @@ import MinkowskiEngine as ME
 from pccai.models.modules.get_modules import get_module_class
 from pccai.models.utils_sparse import scale_sparse_tensor_batch, sort_sparse_tensor_with_dir
 
-#sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../third_party/PCGCv2'))
-from third_party.PCGCv2.entropy_model import EntropyBottleneck
+
 from third_party.PCGCv2.gpcc import gpcc_encode, gpcc_decode
 from third_party.PCGCv2.data_utils import read_ply_ascii_geo, write_ply_ascii_geo
 from third_party.PCGCv2.data_utils import scale_sparse_tensor
