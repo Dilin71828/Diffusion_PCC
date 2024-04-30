@@ -51,5 +51,5 @@ class PccModelWithLoss(nn.Module):
         if self.loss is not None: out['loss'] = self.loss.diffusion_loss(data, out)
         return out
     
-    def step(self):
-        if self.loss is not None: self.loss.step()
+    def step_epoch(self):
+        if self.loss is not None: self.loss.step_epoch()

@@ -29,5 +29,5 @@ class DiffusionLoss(PccLossBase):
         loss_out['loss'] = self.alpha*loss_out['diffusion_loss'] + beta*loss_out['bpp_loss']
         return loss_out
     
-    def step(self):
+    def step_epoch(self):
         self.cur_epoch += 1
