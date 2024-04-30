@@ -131,7 +131,7 @@ def train_one_epoch(pccnet, dataloader, optimizer, aux_optimizer, writer, batch_
         batch_total += 1
 
     for k in avg_loss.keys(): avg_loss[k] = avg_loss[k] / (batch_id + 1) # the average loss
-    pccnet.step_epoch()
+    pccnet.module.step_epoch()
     return avg_loss, batch_total
 
 
