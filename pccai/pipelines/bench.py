@@ -68,7 +68,7 @@ def benchmark_checkpoints(opt):
         if opt.checkpoint_net_config == True:
             opt.net_config = checkpoint['net_config']
             logger.log.info("Model config loaded from check point.")
-            logger.log.info(opt.net_config)
+        logger.log.info(opt.net_config)
         syntax = SyntaxGenerator(opt=opt)
         pccnet = create_pccnet(opt.net_config, checkpoint, syntax, device)
         

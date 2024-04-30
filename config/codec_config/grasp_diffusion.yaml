@@ -7,4 +7,4 @@ codec: 'diffusion_codec'
 translate: [0, 0, 0]
 scale: 1
 
-start_step: 200
+start_step: 30
