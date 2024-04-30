@@ -12,6 +12,7 @@ from pccai.models.utils_sparse import scale_sparse_tensor_batch, sort_sparse_ten
 from third_party.PCGCv2.gpcc import gpcc_encode, gpcc_decode
 from third_party.PCGCv2.data_utils import read_ply_ascii_geo, write_ply_ascii_geo
 from third_party.PCGCv2.data_utils import scale_sparse_tensor
+from third_party.PCGCv2.entropy_model import EntropyBottleneck
 
 class DiffusionGeoResCompression(nn.Module):
 
