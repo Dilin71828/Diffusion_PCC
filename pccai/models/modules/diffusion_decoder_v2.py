@@ -27,7 +27,20 @@ class DiffusionPointsV2(nn.Module):
         self.beta_T = net_config.get('beta_T', 0.05)
         self.betas=torch.linspace(self.beta_1, self.beta_T, steps=self.training_steps).to('cuda')
         self.betas = torch.cat([torch.zeros([1]).to('cuda'), self.betas], dim=0) #padding
+        self.index = torch.arange(self.training_steps, device ='cuda')
         self.alphas = 1-self.betas
+        self.alphas_cumprod = torch.cumprod(self.alphas, 0)
+        self.alphas_cumprod_prev = F.pad(self.alphas_cumprod[:,-1],(1,0),value=1.0)
+        self.sqrt_alphas_cumprod = torch.sqrt(self.alphas_cumprod)
+        self.sqrt_alphas_cumprod_prev = torch.sqrt(self.alphas_cumprod_prev)
+        self.one_minus_alphas_cumprod = 1.0 - self.alphas_cumprod
+        self.one_minus_alphas_cumprod_prev = 1.0 - self.alphas_cumprod_prev
+        self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1.0 - self.alphas_cumprod)
+        self.sqrt_one_minus_alphas_cumprod_prev = torch.sqrt(1.0 - self.alphas_cumprod_prev)
+        self.sqrt_recip_alphas_cumprod = torch.sqrt(1.0/self.alphas_cumprod)
+        self.sqrt_recip_alphas_cumprod_prev = torch.sqrt(1.0/self.alphas_cumprod_prev)
+        self.sqrt_recipm1_alphas_cumprod = torch.sqrt(1.0/self.alphas_cumprod - 1)
+        self.sigma = self.sqrt_one_minus_alphas_cumprod_prev/self.sqrt_one_minus_alphas_cumprod * torch.sqrt(1.0 - self.alphas_cumprod/self.alphas_cumprod_prev) 
         self.alpha_bars = torch.cumprod(self.alphas, 0)
         self.sigmas=torch.zeros_like(self.betas)
         for i in range(1, self.betas.shape[0]):
@@ -40,6 +53,12 @@ class DiffusionPointsV2(nn.Module):
         self.loss_mode = net_config.get('loss_mode', 'MSE')
 
         self.faiss_resource, self.faiss_gpu_index_flat = None, None
+    
+    def noisy(self, x, t):
+        noise = torch.randn_like(x)
+        c0 = torch.sqrt(self.alphas_cumprod[t]).view(-1,1,1)
+        c1 = torch.sqrt(self.one_minus_alphas_cumprod[t]).view(-1,1,1)
+        return c0*x + c1*noise
 
     def get_loss(self, x, feature, t=None):
         """
@@ -51,30 +70,19 @@ class DiffusionPointsV2(nn.Module):
         # Randomly sample t for each residule block
         if t==None:
             t=torch.randint(0, self.training_steps, (batch_size,), device=x.device)
-        beta=self.betas[t]
-        alpha_bar=self.alpha_bars[t]
-
-        noise = torch.randn_like(x)
-        c0 = torch.sqrt(alpha_bar).view(-1,1,1)    # (B,1,1)
-        c1 = torch.sqrt(1-alpha_bar).view(-1,1,1)  # (B,1,1)
-        x_pred = self.net(c0*x+c1*noise, beta, feature)
-        weights = (alpha_bar/(1-alpha_bar)).clip(max=100)
+        
+        indexs = self.index[t]
+        x_pred = self.net(self.noisy(x, t), indexs/self.training_steps, feature)
+        weights = (self.alphas_cumprod[t]/self.one_minus_alphas_cumprod[t]).clamp(max=5)
 
         if self.loss_mode=='MSE':
-            loss = (((x_pred-x)**2).sum(dim=(1,2))*weights).mean()
+            loss = F.mse_loss(x, x_pred, reduction='none').mean(dim=(1, 2))
+            loss = (loss*weights).mean()
         elif self.loss_mode=='CD':
             dist_out,dist_x,_,_ = nndistance(x, x_pred)
             loss = (torch.max(dist_out.mean(dim=1),dist_x.mean(dim=1))*weights).mean()
         
         return loss
-    
-    def noisy(self, x, t):
-        beta = self.betas[t]
-        alpha_bar = self.alpha_bars[t]
-        noise = torch.randn_like(x)
-        c0 = torch.sqrt(alpha_bar).view(-1,1,1)
-        c1 = torch.sqrt(1-alpha_bar).view(-1,1,1)
-        return c0*x + c1*noise
     
     def sample(self, feature, return_traj = False, x_coarse = None, start_step = None, x_init = None):
         batch_size=feature.shape[0]
@@ -112,15 +120,13 @@ class DiffusionPointsV2(nn.Module):
             start_step = self.training_steps
         traj = {start_step: x_T}
         for t in range(start_step, 0, -1):
-            alpha_bar=self.alpha_bars[t]
-            beta=self.betas[[t]*batch_size]
+            indexs=self.index[[t]*batch_size]
             x_t = traj[t]
-            x_pred = self.net(x_t, beta, feature)
-            noise = (x_t - torch.sqrt(alpha_bar)*x_pred)/torch.sqrt(1-alpha_bar) if t>1 else torch.zeros_like(x_T)
+            x_pred = self.net(x_t, indexs/self.training_steps, feature)
+            noise = (x_t - self.sqrt_alphas_cumprod[t]*x_pred)/self.sqrt_one_minus_alphas_cumprod[t]
 
-            alpha_prev = self.alphas[t-1]
             # DDIM sample
-            x_next = torch.sqrt(alpha_prev)*x_pred + torch.sqrt(1-alpha_prev)*noise
+            x_next = self.sqrt_alphas_cumprod_prev[t]*x_pred + self.sqrt_one_minus_alphas_cumprod_prev[t]*noise
 
             print(f'Debug: x_{t}: max{x_t.max()}, min{x_t.min()}')
             traj[t-1] = x_next.detach()
