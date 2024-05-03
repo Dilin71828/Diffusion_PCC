@@ -7,7 +7,7 @@ loss_args:
     loss: diffusion_loss
     alpha: 5
     beta: 1
-    enable_warmup: False 
+    enable_warmup: True 
     warmup_epochs: 20
     warmup_beta: 0.00001
 clip_max_norm: -1

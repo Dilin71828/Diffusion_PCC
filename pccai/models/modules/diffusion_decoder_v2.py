@@ -58,7 +58,7 @@ class DiffusionPointsV2(nn.Module):
         c0 = torch.sqrt(alpha_bar).view(-1,1,1)    # (B,1,1)
         c1 = torch.sqrt(1-alpha_bar).view(-1,1,1)  # (B,1,1)
         x_pred = self.net(c0*x+c1*noise, beta, feature)
-        weights = (alpha_bar/(1-alpha_bar)).clip(max=10000)
+        weights = (alpha_bar/(1-alpha_bar)).clip(max=100)
 
         if self.loss_mode=='MSE':
             loss = (((x_pred-x)**2).sum(dim=(1,2))*weights).mean()
