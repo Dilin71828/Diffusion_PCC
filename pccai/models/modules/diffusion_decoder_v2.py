@@ -30,7 +30,7 @@ class DiffusionPointsV2(nn.Module):
         self.index = torch.arange(self.training_steps, device ='cuda')
         self.alphas = 1-self.betas
         self.alphas_cumprod = torch.cumprod(self.alphas, 0)
-        self.alphas_cumprod_prev = F.pad(self.alphas_cumprod[:,-1],(1,0),value=1.0)
+        self.alphas_cumprod_prev = F.pad(self.alphas_cumprod[:-1],(1,0),value=1.0)
         self.sqrt_alphas_cumprod = torch.sqrt(self.alphas_cumprod)
         self.sqrt_alphas_cumprod_prev = torch.sqrt(self.alphas_cumprod_prev)
         self.one_minus_alphas_cumprod = 1.0 - self.alphas_cumprod
