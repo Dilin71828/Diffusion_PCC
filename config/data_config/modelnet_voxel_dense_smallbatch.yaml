@@ -11,13 +11,13 @@ centralize: True
 
 # Options under individual configurations
 train_cfg:
-    batch_size: 2
+    batch_size: 1
     shuffle: True
     num_workers: 4
     augmentation: True
     split: train
 val_cfg:
-    batch_size: 2
+    batch_size: 1
     shuffle: False
     num_workers: 1
     augmentation: False
