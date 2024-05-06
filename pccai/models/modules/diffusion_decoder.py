@@ -47,8 +47,6 @@ class DiffusionNet(nn.Module):
             self.decode_layers=nn.ModuleList([
                 ConcatSquashLinear(self.input_dim, 128, self.feature_dim+self.t_emb_dim),
                 ConcatSquashLinear(128, 256, self.feature_dim+self.t_emb_dim),
-                ConcatSquashLinear(256, 512, self.feature_dim+self.t_emb_dim),
-                ConcatSquashLinear(512, 256, self.feature_dim+self.t_emb_dim),
                 ConcatSquashLinear(256, 128, self.feature_dim+self.t_emb_dim),
                 ConcatSquashLinear(128, self.input_dim, self.feature_dim+self.t_emb_dim),
             ])
