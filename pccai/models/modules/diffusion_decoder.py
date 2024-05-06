@@ -73,11 +73,12 @@ class DiffusionNet(nn.Module):
         if self.diffusion_mode == 'pointwise':
             out=x
         elif self.diffusion_mode == 'jointly':
-            out=x.reshape(batch_size,-1)
+            out=x.reshape(batch_size,1,-1)
             print(out.shape)
 
         for i, layer in enumerate(self.decode_layers):
             out=layer(ctx=context, x=out)
+            print(out.shape)
             if i<len(self.decode_layers):
                 out=self.act(out)
         
