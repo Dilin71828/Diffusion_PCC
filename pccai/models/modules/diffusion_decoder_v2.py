@@ -27,7 +27,7 @@ class DiffusionPointsV2(nn.Module):
         self.beta_T = net_config.get('beta_T', 0.05)
         self.betas=torch.linspace(self.beta_1, self.beta_T, steps=self.training_steps).to('cuda')
         self.betas = torch.cat([torch.zeros([1]).to('cuda'), self.betas], dim=0) #padding
-        self.index = torch.arange(self.training_steps, device ='cuda')
+        self.index = torch.arange(self.training_steps+1, device ='cuda')
         self.alphas = 1-self.betas
         self.alphas_cumprod = torch.cumprod(self.alphas, 0)
         self.alphas_cumprod_prev = F.pad(self.alphas_cumprod[:-1],(1,0),value=1.0)
@@ -119,7 +119,7 @@ class DiffusionPointsV2(nn.Module):
         if start_step == None:
             start_step = self.training_steps
         traj = {start_step: x_T}
-        for t in range(start_step, 0, -1):
+        for t in range(start_step-1, 0, -1):
             indexs=self.index[[t]*batch_size]
             x_t = traj[t]
             x_pred = self.net(x_t, indexs/self.training_steps, feature)
