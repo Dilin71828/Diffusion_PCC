@@ -18,6 +18,7 @@ modules:
         dims: [8, 64, 32]
     res_dec:
         model: diffusion_decoder_v2
+        diffusion_mode: jointly
         training_steps: 200
         beta_1: 0.0001
         beta_T: 0.05
@@ -27,5 +28,4 @@ modules:
         init_method: quad
         num_points_fit: 50
         thres_dist: 20
-        sample_radius: 2
         loss_mode: CD

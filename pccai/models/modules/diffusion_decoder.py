@@ -30,17 +30,31 @@ class DiffusionNet(nn.Module):
         self.num_points = net_config['num_points']
         self.t_emb_dim=net_config['t_emb_dim']
         self.feature_dim=net_config['feature_dim']
+        self.diffusion_mode = net_config.get('diffusion_mode', 'pointwise')
         self.input_dim = 3*self.num_points
 
         self.act = F.leaky_relu
-        self.decode_layers=nn.ModuleList([
-            ConcatSquashLinear(3  , 128, self.feature_dim+self.t_emb_dim),
-            ConcatSquashLinear(128, 256, self.feature_dim+self.t_emb_dim),
-            ConcatSquashLinear(256, 512, self.feature_dim+self.t_emb_dim),
-            ConcatSquashLinear(512, 256, self.feature_dim+self.t_emb_dim),
-            ConcatSquashLinear(256, 128, self.feature_dim+self.t_emb_dim),
-            ConcatSquashLinear(128,   3, self.feature_dim+self.t_emb_dim),
-        ])
+        if self.diffusion_mode=='pointwise':
+            self.decode_layers=nn.ModuleList([
+                ConcatSquashLinear(3  , 128, self.feature_dim+self.t_emb_dim),
+                ConcatSquashLinear(128, 256, self.feature_dim+self.t_emb_dim),
+                ConcatSquashLinear(256, 512, self.feature_dim+self.t_emb_dim),
+                ConcatSquashLinear(512, 256, self.feature_dim+self.t_emb_dim),
+                ConcatSquashLinear(256, 128, self.feature_dim+self.t_emb_dim),
+                ConcatSquashLinear(128,   3, self.feature_dim+self.t_emb_dim),
+            ])
+        elif self.diffusion_mode=='jointly':
+            self.decode_layers=nn.ModuleList([
+                ConcatSquashLinear(self.input_dim, 128, self.feature_dim+self.t_emb_dim),
+                ConcatSquashLinear(128, 256, self.feature_dim+self.t_emb_dim),
+                ConcatSquashLinear(256, 512, self.feature_dim+self.t_emb_dim),
+                ConcatSquashLinear(512, 256, self.feature_dim+self.t_emb_dim),
+                ConcatSquashLinear(256, 128, self.feature_dim+self.t_emb_dim),
+                ConcatSquashLinear(128, self.input_dim, self.feature_dim+self.t_emb_dim),
+            ])
+        else:
+            raise NotImplementedError(f"Unsupported diffusion mode {self.diffusion_mode}")
+        
         self.time_enc= nn.Linear(3, self.t_emb_dim)
 
     def forward(self, x, t, feature):
@@ -50,19 +64,28 @@ class DiffusionNet(nn.Module):
             t : Timestep, (B, ).
             feature : Encoded latent feature, (B, F).
         """
-        batch_size=x.size(0)
+        batch_size, point_num, input_dim=x.shape
         t = t.view(batch_size, 1, 1)                # (B, 1, 1)
         feature = feature.view(batch_size, 1, -1)   # (B, 1, F)
         time_emb=torch.cat([t, torch.sin(t), torch.cos(t)], dim=-1) # (B, 1, 3)
         time_emb = self.act(self.time_enc(time_emb))
 
         context=torch.cat([feature, time_emb], dim=-1) # (B, 1, F+t_emb_dim)
-        out=x
+
+        if self.diffusion_mode == 'pointwise':
+            out=x
+        elif self.diffusion_mode == 'jointly':
+            out=x.reshape(batch_size,1,-1)
+
         for i, layer in enumerate(self.decode_layers):
             out=layer(ctx=context, x=out)
             if i<len(self.decode_layers):
                 out=self.act(out)
-        return out
+        
+        if self.diffusion_mode=='pointwise':
+            return out
+        elif self.diffusion_mode=='jointly':
+            return out.reshape(batch_size, point_num, input_dim)
     
 class DiffusionPoints(nn.Module):
     def __init__(self, net_config, syntax):

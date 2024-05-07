@@ -2,8 +2,8 @@ architecture: diffusion
 modules:
     dus: 2
     entropy_bottleneck: 8
-    scaling_ratio: 0.125 # key param
-    point_mul: 10 # key param
+    scaling_ratio: -1 # key param
+    point_mul: -1 # key param
     skip_mode: -1 # key param
     noise: 0.125
     res_enc:
@@ -27,5 +27,4 @@ modules:
         init_method: quad
         num_points_fit: 50
         thres_dist: 20
-        sample_radius: 2
-        loss_mode: CD
+        loss_mode: MSE
