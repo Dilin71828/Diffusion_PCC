@@ -119,7 +119,7 @@ class DiffusionPointsV2(nn.Module):
         if start_step == None:
             start_step = self.training_steps
         traj = {start_step: x_T}
-        for t in range(start_step-1, 0, -1):
+        for t in range(start_step, 0, -1):
             indexs=self.index[[t]*batch_size]
             x_t = traj[t]
             x_pred = self.net(x_t, indexs/self.training_steps, feature)
