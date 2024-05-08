@@ -93,10 +93,23 @@ class DiffusionPoints(nn.Module):
         self.net = DiffusionNet(net_config)
         self.training_steps=net_config.get('training_steps', 100)
         self.beta_1 = net_config.get('beta_1', 1e-4)
-        self.beta_T = net_config.get('beta_T', 0.05)   #use the timestep from https://arxiv.org/abs/2006.11239
+        self.beta_T = net_config.get('beta_T', 0.05)
         self.betas=torch.linspace(self.beta_1, self.beta_T, steps=self.training_steps).to('cuda')
         self.betas = torch.cat([torch.zeros([1]).to('cuda'), self.betas], dim=0) #padding
+        self.index = torch.arange(self.training_steps+1, device ='cuda')
         self.alphas = 1-self.betas
+        self.alphas_cumprod = torch.cumprod(self.alphas, 0)
+        self.alphas_cumprod_prev = F.pad(self.alphas_cumprod[:-1],(1,0),value=1.0)
+        self.sqrt_alphas_cumprod = torch.sqrt(self.alphas_cumprod)
+        self.sqrt_alphas_cumprod_prev = torch.sqrt(self.alphas_cumprod_prev)
+        self.one_minus_alphas_cumprod = 1.0 - self.alphas_cumprod
+        self.one_minus_alphas_cumprod_prev = 1.0 - self.alphas_cumprod_prev
+        self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1.0 - self.alphas_cumprod)
+        self.sqrt_one_minus_alphas_cumprod_prev = torch.sqrt(1.0 - self.alphas_cumprod_prev)
+        self.sqrt_recip_alphas_cumprod = torch.sqrt(1.0/self.alphas_cumprod)
+        self.sqrt_recip_alphas_cumprod_prev = torch.sqrt(1.0/self.alphas_cumprod_prev)
+        self.sqrt_recipm1_alphas_cumprod = torch.sqrt(1.0/self.alphas_cumprod - 1)
+        self.sigma = self.sqrt_one_minus_alphas_cumprod_prev/self.sqrt_one_minus_alphas_cumprod * torch.sqrt(1.0 - self.alphas_cumprod/self.alphas_cumprod_prev) 
         self.alpha_bars = torch.cumprod(self.alphas, 0)
         self.sigmas=torch.zeros_like(self.betas)
         for i in range(1, self.betas.shape[0]):
@@ -106,7 +119,7 @@ class DiffusionPoints(nn.Module):
         self.sample_radius = net_config.get('sample_radius', 1)
         self.num_points_fit = net_config.get('num_pooints_fit', 20)
         self.thres_dist = net_config.get('thres_dist', 10)
-
+        self.loss_mode = net_config.get('loss_mode', 'MSE')
         self.faiss_resource, self.faiss_gpu_index_flat = None, None
 
     def get_loss(self, x, feature, t=None):
@@ -119,15 +132,16 @@ class DiffusionPoints(nn.Module):
         # Randomly sample t for each residule block
         if t==None:
             t=torch.randint(0, self.training_steps, (batch_size,), device=x.device)
-        beta=self.betas[t]
+
+        indexs = self.index[t]
         alpha_bar=self.alpha_bars[t]
 
         noise = torch.randn_like(x)
         c0 = torch.sqrt(alpha_bar).view(-1,1,1)    # (B,1,1)
         c1 = torch.sqrt(1-alpha_bar).view(-1,1,1)  # (B,1,1)
-        noise_pred = self.net(c0*x+c1*noise, beta, feature)
+        noise_pred = self.net(c0*x+c1*noise, indexs/self.training_steps, feature)
 
-        loss = F.mse_loss(noise_pred.view(-1, point_dim), noise.view(-1, point_dim), reduction='mean')
+        loss = F.mse_loss(noise_pred, noise, reduction='mean')
         
         return loss
     
