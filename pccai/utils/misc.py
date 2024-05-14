@@ -62,3 +62,6 @@ def load_state_dict_with_fallback(obj, dict):
         logger.log.exception(e)
         logger.log.info(f'Strict load_state_dict has failed. Attempting in non strict mode.')
         obj.load_state_dict(dict, strict=False)
+
+sample_x_10 = np.array([ 1., 0.30901699, -0.80901699, -0.80901699, 0.30901699, 0.4045085 , -0.1545085 , -0.5, -0.1545085, 0.4045085 ])
+sample_y_10 = np.array([ 0., 9.51056516e-01, 5.87785252e-01, -5.87785252e-01, -9.51056516e-01, 2.93892626e-01, 4.75528258e-01, 6.12323400e-17, -4.75528258e-01, -2.93892626e-01])

@@ -9,6 +9,8 @@ import gc
 import faiss
 import faiss.contrib.torch_utils
 
+from pccai.utils.misc import sample_x_10, sample_y_10
+
 from pccai.models.modules.diffusion_decoder import DiffusionNet
 from third_party.nndistance.modules.nnd import NNDModule
 
@@ -47,8 +49,9 @@ class DiffusionPointsV2(nn.Module):
             self.sigmas[i]=((1-self.alpha_bars[i-1])/(1-self.alpha_bars[i]))*self.betas[i]
         self.sigmas = torch.sqrt(self.sigmas)
         self.init_method = net_config.get('init_method', 'gaussian')
+        self.sample_mode = net_config.get('sample_mode', 'random')
         self.sample_radius = net_config.get('sample_radius', 1)
-        self.num_points_fit = net_config.get('num_pooints_fit', 20)
+        self.num_points_fit = net_config.get('num_points_fit', 20)
         self.thres_dist = net_config.get('thres_dist', 10)
         self.loss_mode = net_config.get('loss_mode', 'MSE')
 
@@ -80,7 +83,7 @@ class DiffusionPointsV2(nn.Module):
             loss = (loss*weights).mean()
         elif self.loss_mode=='CD':
             dist_out,dist_x,_,_ = nndistance(x, x_pred)
-            loss = (torch.max(dist_out.mean(dim=1),dist_x.mean(dim=1))*weights).mean()
+            loss = ((dist_out.mean(dim=1)+dist_x.mean(dim=1))*weights).mean()
         
         return loss
     
@@ -170,10 +173,20 @@ class DiffusionPointsV2(nn.Module):
         params = torch.linalg.lstsq(A, coord_z)[0]
         normals = -torch.cat([params[:,1], params[:,2], -torch.ones((neighbors.shape[0],1),device=device)], dim=1) #calculate normal at x=0, y=0
         #sample data in disk area
-        eps1 = torch.rand([batch_size, self.net.num_points, 1], device=device)*np.pi*2
-        eps2 = torch.rand([batch_size, self.net.num_points, 1], device=device)**(0.5)*self.sample_radius
-        sample_x = torch.cos(eps1)*eps2
-        sample_y = torch.sin(eps1)*eps2
+        if self.sample_mode=='random':
+            eps1 = torch.rand([batch_size, self.net.num_points, 1], device=device)*np.pi*2
+            eps2 = torch.rand([batch_size, self.net.num_points, 1], device=device)**(0.5)*self.sample_radius
+            sample_x = torch.cos(eps1)*eps2
+            sample_y = torch.sin(eps1)*eps2
+        elif self.sample_mode=='predefined':
+            if self.net.num_points==10:
+                sample_x = torch.from_numpy(sample_x_10, device=device).reshape(1, -1, 1).repeat(batch_size, 1, 1)*self.sample_radius
+                sample_y = torch.from_numpy(sample_y_10, device=device).reahspe(1, -1, 1).repeat(batch_size, 1, 1)*self.sample_radius
+            else:
+                raise NotImplementedError(f'The pattern to sample {self.net.num_points} points is not defined.')
+            pass
+        else:
+            raise NotImplementedError(f'sample mode {self.sample_mode} not supported!')
         # transform to world space
         normals = normals/normals.norm(dim=1).reshape(-1,1).repeat(1,3)
         tangents = normals.cross(torch.tensor([[0,0,1.]]*normals.shape[0],device='cuda'),dim=1)
