@@ -10,6 +10,7 @@ import faiss
 import faiss.contrib.torch_utils
 
 from pccai.utils.misc import sample_x_10, sample_y_10
+from pccai.models.utils import quad_fitting
 
 from pccai.models.modules.diffusion_decoder import DiffusionNet
 from third_party.nndistance.modules.nnd import NNDModule
@@ -111,7 +112,7 @@ class DiffusionPointsV2(nn.Module):
                 eps2 = (torch.rand([batch_size, self.net.num_points, 1])**(0.5)*self.sample_radius).repeat(1, 1, 3)
                 x_T = torch.cos(eps1)*eps2*tangents + torch.sin(eps1)*eps2*bitangents
             elif self.init_method == 'quad':
-                x_T = self.quad_fit(x_coarse = x_coarse, device=feature.device).detach()
+                x_T = quad_fitting(x_coarse, self.num_points_fit, self.thres_dist, self.sample_mode, self.net.num_points, self.sample_radius)
         else:
             x_T = x_init
 
@@ -142,70 +143,3 @@ class DiffusionPointsV2(nn.Module):
             return traj
         else:
             return traj[0]
-    
-    def quad_fit(self, x_coarse, device):
-        batch_size = x_coarse.shape[0]
-        # do nn searching on coarse pcd
-        if self.faiss_gpu_index_flat == None:
-            self.faiss_resource = faiss.StandardGpuResources()
-            self.faiss_gpu_index_flat = faiss.GpuIndexFlatL2(self.faiss_resource, 3)
-        self.faiss_gpu_index_flat.add(x_coarse)
-        _, I = self.faiss_gpu_index_flat.search(x_coarse, self.num_points_fit)
-        self.faiss_gpu_index_flat.reset()
-        x_coarse_rep = x_coarse.unsqueeze(1).repeat_interleave(self.num_points_fit, dim=1)
-        neighbors = x_coarse[I] - x_coarse_rep
-        # remove outliers
-        mask = torch.logical_or(
-            torch.max(neighbors, dim=2)[0] > self.thres_dist,
-            torch.min(neighbors, dim=2)[0] < -self.thres_dist
-        )
-        I[mask] = I[:,0].unsqueeze(-1).repeat_interleave(self.num_points_fit, dim=1)[mask]
-        neighbors[mask] = x_coarse[I[mask]] - x_coarse_rep[mask]
-        # fit quad surface
-        # select the 'most flat' axis
-        expand = neighbors.max(dim=1)[0] - neighbors.min(dim=1)[0]
-        axis_index = expand.argsort(dim=1, descending = True).reshape(-1,1,3).repeat(1, self.num_points_fit, 1)
-        coord_x = neighbors.gather(dim=2, index=axis_index[:, :, :1])
-        coord_y = neighbors.gather(dim=2, index=axis_index[:,:,1:2])
-        coord_z = neighbors.gather(dim=2, index=axis_index[:,:,2:])
-        A = torch.cat([torch.ones((neighbors.shape[0],self.num_points_fit,1),device=device),
-                       coord_x, coord_y, coord_x**2, coord_y**2, coord_x*coord_y],dim=2)
-        params = torch.linalg.lstsq(A, coord_z)[0]
-        normals = -torch.cat([params[:,1], params[:,2], -torch.ones((neighbors.shape[0],1),device=device)], dim=1) #calculate normal at x=0, y=0
-        #sample data in disk area
-        if self.sample_mode=='random':
-            eps1 = torch.rand([batch_size, self.net.num_points, 1], device=device)*np.pi*2
-            eps2 = torch.rand([batch_size, self.net.num_points, 1], device=device)**(0.5)*self.sample_radius
-            sample_x = torch.cos(eps1)*eps2
-            sample_y = torch.sin(eps1)*eps2
-        elif self.sample_mode=='predefined':
-            if self.net.num_points==10:
-                sample_x = torch.from_numpy(sample_x_10, device=device).reshape(1, -1, 1).repeat(batch_size, 1, 1)*self.sample_radius
-                sample_y = torch.from_numpy(sample_y_10, device=device).reahspe(1, -1, 1).repeat(batch_size, 1, 1)*self.sample_radius
-            else:
-                raise NotImplementedError(f'The pattern to sample {self.net.num_points} points is not defined.')
-            pass
-        else:
-            raise NotImplementedError(f'sample mode {self.sample_mode} not supported!')
-        # transform to world space
-        normals = normals/normals.norm(dim=1).reshape(-1,1).repeat(1,3)
-        tangents = normals.cross(torch.tensor([[0,0,1.]]*normals.shape[0],device='cuda'),dim=1)
-        tangents_norm = tangents.norm(dim=1)
-        tangents[tangents_norm<1e-8] = torch.tensor([0,1.,0],device='cuda')
-        tangents = tangents/tangents.norm(dim=1).reshape(-1,1).repeat(1,3)  # [B,3]
-        bitangents = normals.cross(tangents,dim=1)
-        bitangents = bitangents/bitangents.norm(dim=1).reshape(-1,1).repeat(1,3) # [B,3]
-        sample_coord = torch.cat([sample_x,sample_y,torch.zeros_like(sample_x)],dim=2)
-        sample_coord = torch.cat([
-            torch.einsum('ijk,ik->ij',sample_coord,tangents).reshape(-1,self.net.num_points,1),
-            torch.einsum('ijk,ik->ij',sample_coord,bitangents).reshape(-1,self.net.num_points,1),
-            torch.einsum('ijk,ik->ij',sample_coord,normals).reshape(-1,self.net.num_points,1)
-        ], dim=2)
-        sample_x = sample_coord[:,:,0].reshape(sample_coord.shape[0],self.net.num_points,1)
-        sample_y = sample_coord[:,:,1].reshape(sample_coord.shape[0],self.net.num_points,1)
-        sample_quad_coord = torch.cat([torch.ones((neighbors.shape[0],self.net.num_points,1),device='cuda'),
-                                       sample_x,sample_y,sample_x**2,sample_y**2,sample_x*sample_y],dim=2)
-        sample_coord[:,:,2] = torch.einsum('ijk,ik->ij',sample_quad_coord, params.squeeze(2))
-        x_T = sample_coord.scatter(dim=2,index=axis_index[:,::self.num_points_fit,:].repeat(1, self.net.num_points,1),src=sample_coord)
-        x_T = x_T.clamp(-self.sample_radius*2, self.sample_radius*2)
-        return x_T
