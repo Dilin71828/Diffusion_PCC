@@ -185,8 +185,8 @@ def quad_fitting(x_coarse, fit_num = 50, fit_radius = 20, sample_mode = 'random'
         sample_y = torch.sin(eps1)*eps2
     elif sample_mode=='predefined':
         if sample_num==10:
-            sample_x = torch.from_numpy(sample_x_10, device=x_coarse.device).reshape(1, -1, 1).repeat(batch_size, 1, 1)*sample_radius
-            sample_y = torch.from_numpy(sample_y_10, device=x_coarse.device).reahspe(1, -1, 1).repeat(batch_size, 1, 1)*sample_radius
+            sample_x = torch.from_numpy(sample_x_10).to(x_coarse.device).reshape(1, -1, 1).repeat(batch_size, 1, 1)*sample_radius
+            sample_y = torch.from_numpy(sample_y_10).to(x_coarse.device).reahspe(1, -1, 1).repeat(batch_size, 1, 1)*sample_radius
         else:
             raise NotImplementedError(f'The pattern to sample {sample_num} points is not defined.')
         pass
