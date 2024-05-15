@@ -143,7 +143,7 @@ def quad_fitting(x_coarse, fit_num = 50, fit_radius = 20, sample_mode = 'random'
     sample points from a local neighbor area.
 
     Args:
-        x_coarse: positions of point, [B, N, Dim]
+        x_coarse: positions of point, [B, Dim]
         fit_num: number of neibor points used to fit quadratic surface
         fit_radius: restrict the maximum distance between the neighbor points and the center
         sample_mode: indicate different ways to generate samples ('random' for uniform sampling, 'predefined' will use some fixed pattern)
@@ -157,7 +157,7 @@ def quad_fitting(x_coarse, fit_num = 50, fit_radius = 20, sample_mode = 'random'
     faiss_gpu_index_flat.add(x_coarse)
     _, I = faiss_gpu_index_flat.search(x_coarse, fit_num)
     faiss_gpu_index_flat.reset()
-    x_coarse_rep = x_coarse.unsqueeze(1).repeat_interleave(fit_num, dim=1)
+    x_coarse_rep = x_coarse.unsqueeze(1).repeat_interleave(fit_num, dim=1)  #[B, N, Dim]
     neighbors = x_coarse[I] - x_coarse_rep
     # remove outliers
     mask = torch.logical_or(
