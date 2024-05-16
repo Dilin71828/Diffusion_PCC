@@ -161,16 +161,15 @@ class PointResidualEncoder(nn.Module):
             self.faiss_gpu_index_flat.add(x_orig_cur)
             _, I = self.faiss_gpu_index_flat.search(x_coarse_cur, self.k) # actual search
             self.faiss_gpu_index_flat.reset()
-            x_neighbor = x_orig_cur[I] #[B, N, D]
             x_coarse_rep = x_coarse_cur.unsqueeze(1).repeat_interleave(self.k, dim=1)
-            geo_res[tot : tot + x_coarse_cur.shape[0], :, :] = x_neighbor - x_coarse_rep
+            x_neighbor = x_orig_cur[I] - x_coarse_rep
             # Outlier removal
             mask = torch.logical_or(
                 torch.max(geo_res[tot : tot + x_coarse_cur.shape[0], :, :], dim=2)[0] > self.thres_dist,
                 torch.min(geo_res[tot : tot + x_coarse_cur.shape[0], :, :], dim=2)[0] < -self.thres_dist
             ) # True is outlier
             I[mask] = I[:, 0].unsqueeze(-1).repeat_interleave(self.k, dim=1)[mask] # get the indices of the first NN
-            x_neighbor = x_orig_cur[I]  #[B, N, Dim]
+            x_neighbor[mask] = x_orig_cur[I[mask]] - x_coarse_rep[mask] # recompute the outlier distance
 
             # recompute distance through quad fitting result
             # greedy search for nearest neighbor
@@ -182,7 +181,7 @@ class PointResidualEncoder(nn.Module):
                 # remove matched pairs
                 mask = torch.ones((x_neighbor.shape[0], x_neighbor.shape[1]))
                 mask.scatter_(1, idx_neighbor[:,0].reshape(-1,1), 0)
-                x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse_cur.shape[0],-1,1)
+                x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse_cur.shape[0],-1,3)
                 if (nn_cnt < self.k-1):
                     x_ref = x_ref[:, 1:, :]
 
