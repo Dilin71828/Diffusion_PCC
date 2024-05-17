@@ -23,13 +23,13 @@ from gpcc import gpcc_encode, gpcc_decode
 from data_utils import scale_sparse_tensor
 
 
-class GeoResCompression(nn.Module):
+class GeoResCompressionQuad(nn.Module):
     """
     Geometric Residual Analysis and Synthesis for PCC
     """
 
     def __init__(self, net_config, syntax):
-        super(GeoResCompression, self).__init__()
+        super(GeoResCompressionQuad, self).__init__()
 
         # Grab the basic parameters
         self.dus = net_config.get('dus', 1) # down-up scaling can be 1 or 2

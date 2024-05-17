@@ -10,11 +10,13 @@ from pccai.optim.utils import get_loss_class
 # Import all the architectures to be used
 from pccai.models.architectures.grasp import GeoResCompression
 from pccai.models.architectures.diffusion_grasp import DiffusionGeoResCompression
+from pccai.models.architectures.grasp_quad import GeoResCompressionQuad
 
 # List the all the architectures in the following dictionary 
 # For a custom architecture, it is recommended to implement a compress() and a decompress() functions that can be called by the codec.
 architectures = {
     'grasp': GeoResCompression,
+    'grasp_quad': GeoResCompressionQuad,
     'diffusion': DiffusionGeoResCompression,
 }
 
