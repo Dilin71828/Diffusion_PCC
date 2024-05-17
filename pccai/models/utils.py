@@ -189,7 +189,8 @@ def quad_fitting(x_coarse, fit_num = 50, fit_radius = 20, sample_mode = 'random'
     coord_z = neighbors.gather(dim=2, index=axis_index[:,:,2:])
     A = torch.cat([torch.ones((neighbors.shape[0],fit_num,1),device=x_coarse.device),
                    coord_x, coord_y, coord_x**2, coord_y**2, coord_x*coord_y],dim=2)
-    params = torch.linalg.lstsq(A, coord_z)[0]
+    params = svd_lstsq(A, coord_z)
+    #params = torch.linalg.lstsq(A, coord_z)[0]
     normals = -torch.cat([params[:,1], params[:,2], -torch.ones((neighbors.shape[0],1),device=x_coarse.device)], dim=1) #calculate normal at x=0, y=0
     #sample data in disk area
     if sample_mode=='random':
