@@ -156,7 +156,7 @@ class PointResidualEncoder(nn.Module):
         for pc_cnt in range(batch_size):
             x_coarse_cur = (x_coarse[x_coarse[:, 0] == pc_cnt][:, 1:]).float().contiguous() # current coarse
             x_orig_cur = (x_orig[x_orig[:, 0] == pc_cnt][:, 1:]).float().contiguous() # current full cloud
-            x_ref_cur = (x_ref[x_ref[:,0]==pc_cnt][:,1:]).reshape(x_coarse_cur.shape[0], self.k, 3)
+            x_ref_cur = (x_ref[x_ref[:,0]==pc_cnt][:,1:]).reshape(x_coarse_cur.shape[0], self.k, 3).contiguous()
             if self.faiss_gpu_index_flat == None:
                 self.faiss_resource = faiss.StandardGpuResources()
                 self.faiss_gpu_index_flat = faiss.GpuIndexFlatL2(self.faiss_resource, 3)
