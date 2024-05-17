@@ -42,14 +42,15 @@ class PointResidualEncoder(nn.Module):
         self.fit_radius = net_config.get('fit_radius', 20)
         self.sample_radius = net_config.get('sample_radius', 2)
 
-    def forward(self, x_orig, x_coarse, output_res = False):
+    def forward(self, x_orig, x_coarse, output_res = False, x_ref = None):
         if self.residual_mode=='center':
             geo_subtraction = self.geo_subtraction_batch if self.phase =='train' else self.geo_subtraction
+            geo_res = geo_subtraction(x_orig, x_coarse)
         elif self.residual_mode=='quad_fitting':
             geo_subtraction = self.geo_subtraction_batch_with_quad_fitting if self.phase=='train' else self.geo_subtraction_with_quad_fitting
+            geo_res = geo_subtraction(x_orig, x_coarse, x_ref)
         else:
             raise NotImplementedError(f'residual mode {self.residual_mode} not supported!')
-        geo_res = geo_subtraction(x_orig, x_coarse)
         feat = self.feat_gen(geo_res)
         if (output_res):
             return feat, geo_res
@@ -147,7 +148,7 @@ class PointResidualEncoder(nn.Module):
         del I, x_coarse_rep, x_orig, x_coarse, mask
         return geo_res
     
-    def geo_subtraction_batch_with_quad_fitting(self, x_orig, x_coarse):
+    def geo_subtraction_batch_with_quad_fitting(self, x_orig, x_coarse, x_ref):
         geo_res = torch.zeros(size=(x_coarse.shape[0], self.k, 3), device=x_coarse.device) # geometric residual
         batch_size = x_orig[-1][0].item() + 1
         tot = 0
@@ -155,6 +156,7 @@ class PointResidualEncoder(nn.Module):
         for pc_cnt in range(batch_size):
             x_coarse_cur = (x_coarse[x_coarse[:, 0] == pc_cnt][:, 1:]).float().contiguous() # current coarse
             x_orig_cur = (x_orig[x_orig[:, 0] == pc_cnt][:, 1:]).float().contiguous() # current full cloud
+            x_ref_cur = (x_ref[x_ref[:,0]==pc_cnt][:,1:]).reshape(x_coarse.shape[0], self.k, 3)
             if self.faiss_gpu_index_flat == None:
                 self.faiss_resource = faiss.StandardGpuResources()
                 self.faiss_gpu_index_flat = faiss.GpuIndexFlatL2(self.faiss_resource, 3)
@@ -173,20 +175,20 @@ class PointResidualEncoder(nn.Module):
 
             # recompute distance through quad fitting result
             # greedy search for nearest neighbor
-            x_ref = quad_fitting(x_coarse_cur, self.fit_num, self.fit_radius, 'predefined', self.k, self.sample_radius)  #[B, N, Dim]
+            # x_ref = quad_fitting(x_coarse_cur, self.fit_num, self.fit_radius, 'predefined', self.k, self.sample_radius)  #[B, N, Dim]
             # sequential searching with nndistance (make sure bijection)
             for nn_cnt in range(self.k):
-                _, _, idx_neighbor, _ = nndistance(x_ref, x_neighbor)
-                geo_res[tot : tot + x_coarse_cur.shape[0], nn_cnt, :] = x_neighbor.gather(dim=1, index=idx_neighbor[:,0].reshape(-1,1,1).repeat(1,1,3)).squeeze(1) - x_ref[:,0,:]
+                _, _, idx_neighbor, _ = nndistance(x_ref_cur, x_neighbor)
+                geo_res[tot : tot + x_coarse_cur.shape[0], nn_cnt, :] = x_neighbor.gather(dim=1, index=idx_neighbor[:,0].reshape(-1,1,1).repeat(1,1,3)).squeeze(1) - x_ref_cur[:,0,:]
                 # remove matched pairs
                 mask = torch.ones((x_neighbor.shape[0], x_neighbor.shape[1]), device=x_coarse.device)
                 mask.scatter_(1, idx_neighbor[:,0].reshape(-1,1), 0)
                 x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse_cur.shape[0],-1,3).contiguous()
                 if (nn_cnt < self.k-1):
-                    x_ref = x_ref[:, 1:, :].contiguous()
+                    x_ref_cur = x_ref_cur[:, 1:, :].contiguous()
 
             tot += x_coarse_cur.shape[0]
-        del I, x_coarse_rep, x_orig, x_coarse, mask, x_ref, x_neighbor
+        del I, x_coarse_rep, x_orig, x_coarse, mask, x_neighbor
         return geo_res
     
     def geo_subtraction_with_quad_fitting(self, x_orig, x_coarse):
@@ -214,10 +216,10 @@ class PointResidualEncoder(nn.Module):
             _, _, idx_neighbor, _ = nndistance(x_ref, x_neighbor)
             geo_res[:, nn_cnt, :] = x_neighbor.gather(dim=1, index=idx_neighbor[:,0].reshape(-1,1,1).repeat(1,1,3)).squeeze(1) - x_ref[:,0,:]
             # remove matched pairs
-            mask = torch.ones((x_neighbor.shape[0], x_neighbor.shape[1]))
+            mask = torch.ones((x_neighbor.shape[0], x_neighbor.shape[1]), device=x_coarse.device)
             mask.scatter_(1, idx_neighbor[:,0].reshape(-1,1), 0)
-            x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse.shape[0],-1,1)
+            x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse.shape[0],-1,1).contiguous()
             if (nn_cnt < self.k-1):
-                x_ref = x_ref[:, 1:, :]
+                x_ref = x_ref[:, 1:, :].contiguous()
         del I, mask, x_neighbor, x_ref, x_coarse_rep, x_orig, x_coarse
         return geo_res

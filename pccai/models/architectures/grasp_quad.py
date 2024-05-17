@@ -43,6 +43,10 @@ class GeoResCompression(nn.Module):
         if syntax.phase.lower() == 'train': # additive noise, only exist when training
             self.noise = net_config.get('noise', -1)
 
+        self.fit_num = net_config.get('fit_num', 20)
+        self.fit_radius = net_config.get('fit_radius', 20)
+        self.sample_radius = net_config.get('sample_radius', 2)
+
         # Overwrite/Populate some parameters to the sub-modules
         net_config['res_enc']['k'] =  net_config['res_dec']['num_points'] = self.point_mul
         net_config['res_enc']['thres_dist'] = self.thres_dist
@@ -75,9 +79,19 @@ class GeoResCompression(nn.Module):
             # x_coarse is supposed to be encoded losslessly here, followed by dequantization
             x_coarse_deq = torch.hstack((x_coarse.C[:, 0:1], (x_coarse.C[:, 1:] / self.scaling_ratio)))
 
+        x_ref = torch.zeros((x_coarse_deq.shape[0]*self.point_mul, 4))
+        x_ref[:,0] = x_coarse_deq[:,0].repeat_interleave(self.point_mul) # batch cnt
+        batch_size = x.C[-1][0].item() + 1
+        tot = 0
+        for pc_cnt in range(batch_size):
+            x_coarse_cur = (x_coarse_deq[x_coarse_deq[:, 0] == pc_cnt][:, 1:]).float().contiguous()
+            x_ref_cur = quad_fitting(x_coarse_cur, self.fit_num, self.fit_radius, 'predefined', self.point_mul, self.sample_radius)  #[B, N, Dim]
+            x_ref[tot : tot + x_coarse_cur.shape[0], 1:] = x_ref_cur.reshape(-1, 3)
+            tot += x_coarse_cur.shape[0]
+
         # Enhancement layer begins
         if self.skip_mode==False:
-            feat = self.res_enc(x.C, x_coarse_deq) # extract the geometric residual and perform encoding
+            feat = self.res_enc(x.C, x_coarse_deq, x_ref) # extract the geometric residual and perform encoding
             x_feat = ME.SparseTensor( # coarse point cloud with geometric features attached
                 features=feat,
                 coordinate_manager=x_coarse.coordinate_manager,
@@ -106,6 +120,7 @@ class GeoResCompression(nn.Module):
 
         # Add back the residual
         out = x_coarse_deq.repeat_interleave(self.point_mul, dim=0)
+        out[:, 1:] += x_ref
         out[:, 1:] += res
         return {'x_hat': out,
                 'gt': coords,
