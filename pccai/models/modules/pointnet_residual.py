@@ -48,7 +48,7 @@ class PointResidualEncoder(nn.Module):
             geo_res = geo_subtraction(x_orig, x_coarse)
         elif self.residual_mode=='quad_fitting':
             geo_subtraction = self.geo_subtraction_batch_with_quad_fitting if self.phase=='train' else self.geo_subtraction_with_quad_fitting
-            geo_res = geo_subtraction(x_orig, x_coarse, x_ref)
+            geo_res = geo_subtraction(x_orig, x_coarse)
         else:
             raise NotImplementedError(f'residual mode {self.residual_mode} not supported!')
         feat = self.feat_gen(geo_res)
@@ -148,7 +148,7 @@ class PointResidualEncoder(nn.Module):
         del I, x_coarse_rep, x_orig, x_coarse, mask
         return geo_res
     
-    def geo_subtraction_batch_with_quad_fitting(self, x_orig, x_coarse, x_ref):
+    def geo_subtraction_batch_with_quad_fitting(self, x_orig, x_coarse):
         geo_res = torch.zeros(size=(x_coarse.shape[0], self.k, 3), device=x_coarse.device) # geometric residual
         batch_size = x_orig[-1][0].item() + 1
         tot = 0
@@ -175,7 +175,7 @@ class PointResidualEncoder(nn.Module):
 
             # recompute distance through quad fitting result
             # greedy search for nearest neighbor
-            # x_ref = quad_fitting(x_coarse_cur, self.fit_num, self.fit_radius, 'predefined', self.k, self.sample_radius)  #[B, N, Dim]
+            x_ref = quad_fitting(x_coarse_cur, self.fit_num, self.fit_radius, 'predefined', self.k, self.sample_radius)  #[B, N, Dim]
             # sequential searching with nndistance (make sure bijection)
             for nn_cnt in range(self.k):
                 _, _, idx_neighbor, _ = nndistance(x_ref_cur, x_neighbor)

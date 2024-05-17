@@ -79,15 +79,17 @@ class GeoResCompressionQuad(nn.Module):
             # x_coarse is supposed to be encoded losslessly here, followed by dequantization
             x_coarse_deq = torch.hstack((x_coarse.C[:, 0:1], (x_coarse.C[:, 1:] / self.scaling_ratio)))
 
-        x_ref = torch.zeros((x_coarse_deq.shape[0]*self.point_mul, 4))
-        x_ref[:,0] = x_coarse_deq[:,0].repeat_interleave(self.point_mul) # batch cnt
-        batch_size = x.C[-1][0].item() + 1
-        tot = 0
-        for pc_cnt in range(batch_size):
-            x_coarse_cur = (x_coarse_deq[x_coarse_deq[:, 0] == pc_cnt][:, 1:]).float().contiguous()
-            x_ref_cur = quad_fitting(x_coarse_cur, self.fit_num, self.fit_radius, 'predefined', self.point_mul, self.sample_radius)  #[B, N, Dim]
-            x_ref[tot : tot + x_coarse_cur.shape[0]*self.point_mul, 1:] = x_ref_cur.reshape(-1, 3)
-            tot += x_coarse_cur.shape[0]*self.point_mul
+            x_ref = torch.zeros((x_coarse_deq.shape[0]*self.point_mul, 4))
+            x_ref[:,0] = x_coarse_deq[:,0].repeat_interleave(self.point_mul) # batch cnt
+            batch_size = x.C[-1][0].item() + 1
+            tot = 0
+            for pc_cnt in range(batch_size):
+                x_coarse_cur = (x_coarse_deq[x_coarse_deq[:, 0] == pc_cnt][:, 1:]).float().contiguous()
+                x_ref_cur = quad_fitting(x_coarse_cur, self.fit_num, self.fit_radius, 'predefined', self.point_mul, self.sample_radius)  #[B, N, Dim]
+                x_ref[tot : tot + x_coarse_cur.shape[0]*self.point_mul, 1:] = x_ref_cur.reshape(-1, 3)
+                tot += x_coarse_cur.shape[0]*self.point_mul
+
+        
 
         # Enhancement layer begins
         if self.skip_mode==False:
