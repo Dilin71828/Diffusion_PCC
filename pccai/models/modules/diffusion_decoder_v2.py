@@ -80,7 +80,7 @@ class DiffusionPointsV2(nn.Module):
             loss = (loss*weights).mean()
         elif self.loss_mode=='CD':
             dist_out,dist_x,_,_ = nndistance(x, x_pred)
-            loss = (torch.max(dist_out.mean(dim=1),dist_x.mean(dim=1))*weights).mean()
+            loss = ((dist_out.mean(dim=1)+dist_x.mean(dim=1))*weights).mean()
         
         return loss
     
