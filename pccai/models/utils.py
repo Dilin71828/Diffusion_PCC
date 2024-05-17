@@ -137,6 +137,20 @@ class PointNet(nn.Sequential):
         layers.extend(get_MLP_layers(FC_dims, False))
         super(PointNet, self).__init__(*layers)
 
+def svd_lstsq(AA, BB, tol=1e-5):
+    """
+    Used to avoid numeric error when torch.linalg.lstsq is used for rank difficient inputs
+    """
+    U, S, Vh = torch.linalg.svd(AA, full_matrices=False)
+    Spinv = torch.zeros_like(S)
+    Spinv[S>tol] = 1/S[S>tol]
+    UhBB = U.adjoint() @ BB
+    if Spinv.ndim!=UhBB.ndim:
+        Spinv = Spinv.unsqueeze(-1)
+    SpinvUhBB = Spinv*UhBB
+    return Vh.adjoint() @ SpinvUhBB
+
+
 def quad_fitting(x_coarse, fit_num = 50, fit_radius = 20, sample_mode = 'random', sample_num=10, sample_radius=2):
     """
     Fit a quadratic surface for each points in a coarse point cloud based on its neighbor, then
