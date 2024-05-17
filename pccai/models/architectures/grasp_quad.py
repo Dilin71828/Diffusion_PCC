@@ -89,8 +89,6 @@ class GeoResCompressionQuad(nn.Module):
                 x_ref[tot : tot + x_coarse_cur.shape[0]*self.point_mul, 1:] = x_ref_cur.reshape(-1, 3)
                 tot += x_coarse_cur.shape[0]*self.point_mul
 
-        
-
         # Enhancement layer begins
         if self.skip_mode==False:
             feat = self.res_enc(x.C, x_coarse_deq, x_ref = x_ref) # extract the geometric residual and perform encoding
@@ -122,7 +120,7 @@ class GeoResCompressionQuad(nn.Module):
 
         # Add back the residual
         out = x_coarse_deq.repeat_interleave(self.point_mul, dim=0)
-        out[:, 1:] += x_ref
+        out[:, 1:] += x_ref[:,1:]
         out[:, 1:] += res
         return {'x_hat': out,
                 'gt': coords,
