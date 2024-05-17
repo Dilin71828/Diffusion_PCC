@@ -14,7 +14,7 @@ modules:
         mlp_dims: [3, 16, 32, 64, 64, 128]
         fc_dims: [128, 64, 16]
         residual_mode: quad_fitting
-        fit_num: 20
+        fit_num: 30
         fit_radius: 20
         sample_radius: 5
     vox_enc:

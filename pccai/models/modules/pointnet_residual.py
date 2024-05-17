@@ -181,9 +181,9 @@ class PointResidualEncoder(nn.Module):
                 # remove matched pairs
                 mask = torch.ones((x_neighbor.shape[0], x_neighbor.shape[1]), device=x_coarse.device)
                 mask.scatter_(1, idx_neighbor[:,0].reshape(-1,1), 0)
-                x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse_cur.shape[0],-1,3)
+                x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse_cur.shape[0],-1,3).contiguous()
                 if (nn_cnt < self.k-1):
-                    x_ref = x_ref[:, 1:, :]
+                    x_ref = x_ref[:, 1:, :].contiguous()
 
             tot += x_coarse_cur.shape[0]
         del I, x_coarse_rep, x_orig, x_coarse, mask, x_ref, x_neighbor
