@@ -79,7 +79,7 @@ class GeoResCompressionQuad(nn.Module):
             # x_coarse is supposed to be encoded losslessly here, followed by dequantization
             x_coarse_deq = torch.hstack((x_coarse.C[:, 0:1], (x_coarse.C[:, 1:] / self.scaling_ratio)))
 
-            x_ref = torch.zeros((x_coarse_deq.shape[0]*self.point_mul, 4))
+            x_ref = torch.zeros((x_coarse_deq.shape[0]*self.point_mul, 4), device=x_coarse_deq.device)
             x_ref[:,0] = x_coarse_deq[:,0].repeat_interleave(self.point_mul) # batch cnt
             batch_size = x.C[-1][0].item() + 1
             tot = 0
