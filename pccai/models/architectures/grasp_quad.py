@@ -86,8 +86,8 @@ class GeoResCompressionQuad(nn.Module):
         for pc_cnt in range(batch_size):
             x_coarse_cur = (x_coarse_deq[x_coarse_deq[:, 0] == pc_cnt][:, 1:]).float().contiguous()
             x_ref_cur = quad_fitting(x_coarse_cur, self.fit_num, self.fit_radius, 'predefined', self.point_mul, self.sample_radius)  #[B, N, Dim]
-            x_ref[tot : tot + x_coarse_cur.shape[0], 1:] = x_ref_cur.reshape(-1, 3)
-            tot += x_coarse_cur.shape[0]
+            x_ref[tot : tot + x_coarse_cur.shape[0]*self.point_mul, 1:] = x_ref_cur.reshape(-1, 3)
+            tot += x_coarse_cur.shape[0]*self.point_mul
 
         # Enhancement layer begins
         if self.skip_mode==False:
