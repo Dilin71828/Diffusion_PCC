@@ -156,7 +156,7 @@ class PointResidualEncoder(nn.Module):
         for pc_cnt in range(batch_size):
             x_coarse_cur = (x_coarse[x_coarse[:, 0] == pc_cnt][:, 1:]).float().contiguous() # current coarse
             x_orig_cur = (x_orig[x_orig[:, 0] == pc_cnt][:, 1:]).float().contiguous() # current full cloud
-            x_ref_cur = (x_ref[x_ref[:,0]==pc_cnt][:,1:]).reshape(x_coarse_cur.shape[0], self.k, 3)
+            #x_ref_cur = (x_ref[x_ref[:,0]==pc_cnt][:,1:]).reshape(x_coarse_cur.shape[0], self.k, 3)
             if self.faiss_gpu_index_flat == None:
                 self.faiss_resource = faiss.StandardGpuResources()
                 self.faiss_gpu_index_flat = faiss.GpuIndexFlatL2(self.faiss_resource, 3)
@@ -178,14 +178,14 @@ class PointResidualEncoder(nn.Module):
             x_ref = quad_fitting(x_coarse_cur, self.fit_num, self.fit_radius, 'predefined', self.k, self.sample_radius)  #[B, N, Dim]
             # sequential searching with nndistance (make sure bijection)
             for nn_cnt in range(self.k):
-                _, _, idx_neighbor, _ = nndistance(x_ref_cur, x_neighbor)
-                geo_res[tot : tot + x_coarse_cur.shape[0], nn_cnt, :] = x_neighbor.gather(dim=1, index=idx_neighbor[:,0].reshape(-1,1,1).repeat(1,1,3)).squeeze(1) - x_ref_cur[:,0,:]
+                _, _, idx_neighbor, _ = nndistance(x_ref, x_neighbor)
+                geo_res[tot : tot + x_coarse_cur.shape[0], nn_cnt, :] = x_neighbor.gather(dim=1, index=idx_neighbor[:,0].reshape(-1,1,1).repeat(1,1,3)).squeeze(1) - x_ref[:,0,:]
                 # remove matched pairs
                 mask = torch.ones((x_neighbor.shape[0], x_neighbor.shape[1]), device=x_coarse.device)
                 mask.scatter_(1, idx_neighbor[:,0].reshape(-1,1), 0)
                 x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse_cur.shape[0],-1,3).contiguous()
                 if (nn_cnt < self.k-1):
-                    x_ref_cur = x_ref_cur[:, 1:, :].contiguous()
+                    x_ref = x_ref[:, 1:, :].contiguous()
 
             tot += x_coarse_cur.shape[0]
         del I, x_coarse_rep, x_orig, x_coarse, mask, x_neighbor
