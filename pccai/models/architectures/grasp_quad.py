@@ -91,7 +91,7 @@ class GeoResCompressionQuad(nn.Module):
 
         # Enhancement layer begins
         if self.skip_mode==False:
-            feat = self.res_enc(x.C, x_coarse_deq, x_ref) # extract the geometric residual and perform encoding
+            feat = self.res_enc(x.C, x_coarse_deq, x_ref = x_ref) # extract the geometric residual and perform encoding
             x_feat = ME.SparseTensor( # coarse point cloud with geometric features attached
                 features=feat,
                 coordinate_manager=x_coarse.coordinate_manager,
