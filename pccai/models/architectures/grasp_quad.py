@@ -210,7 +210,9 @@ class GeoResCompressionQuad(nn.Module):
         y_dec_F = y_dec.F.reshape(-1, 3) # take out the decoded coordinates
         y_dec_C = (y_dec.C[:, 1:] / self.scaling_ratio).float().contiguous() # + (self.scaling_ratio / 2)
 
-        out = y_dec_C.repeat_interleave(self.point_mul, dim=0) + y_dec_F
+        y_dec_C_ref = quad_fitting(y_dec_C, self.fit_num, self.fit_radius, 'predefined', self.point_mul, self.sample_radius)
+
+        out = y_dec_C.repeat_interleave(self.point_mul, dim=0) + y_dec_F + y_dec_C_ref
         return out
 
 
