@@ -212,7 +212,7 @@ class GeoResCompressionQuad(nn.Module):
 
         y_dec_C_ref = quad_fitting(y_dec_C, self.fit_num, self.fit_radius, 'predefined', self.point_mul, self.sample_radius)
 
-        out = y_dec_C.repeat_interleave(self.point_mul, dim=0) + y_dec_F + y_dec_C_ref
+        out = y_dec_C.repeat_interleave(self.point_mul, dim=0) + y_dec_F + y_dec_C_ref.reshape(-1,3)
         return out
 
 
