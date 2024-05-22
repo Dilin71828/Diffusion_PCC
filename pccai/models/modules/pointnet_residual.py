@@ -191,7 +191,7 @@ class PointResidualEncoder(nn.Module):
         del I, x_coarse_rep, x_orig, x_coarse, mask, x_neighbor
         return geo_res
     
-    def geo_subtraction_with_quad_fitting(self, x_orig, x_coarse):
+    def geo_subtraction_with_quad_fitting(self, x_orig, x_coarse, x_ref = None):
         geo_res = torch.zeros(size=(x_coarse.shape[1], self.k, 3), device=x_coarse.device)
         x_orig, x_coarse = x_orig.squeeze(0), x_coarse.squeeze(0)
         self.faiss_resource = faiss.StandardGpuResources()
