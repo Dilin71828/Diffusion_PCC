@@ -201,7 +201,7 @@ class PointResidualEncoder(nn.Module):
         self.faiss_gpu_index_flat.reset()
 
         x_coarse_rep = x_coarse.unsqueeze(1).repeat_interleave(self.k, dim=1)
-        geo_res = x_orig[I] - x_coarse_rep
+        x_neighbor = x_orig[I] - x_coarse_rep
 
         # Outlier removal
         mask = torch.logical_not(torch.logical_and(
@@ -209,7 +209,8 @@ class PointResidualEncoder(nn.Module):
             torch.min(geo_res, dim=2)[0] >= -self.thres_dist
         )) # True is outlier
         I[mask] = I[:, 0].unsqueeze(-1).repeat_interleave(self.k, dim=1)[mask] # get the indices of the first NN
-        x_neighbor = x_orig[I]
+        x_neighbor[mask] = x_orig[I[mask]] - x_coarse_rep[mask] # recompute the outlier distance
+        
         x_ref = quad_fitting(x_coarse, self.fit_num, self.fit_radius, 'predefined', self.k, self.sample_radius)
 
         for nn_cnt in range(self.k):
