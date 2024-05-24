@@ -180,14 +180,14 @@ class PointResidualEncoder(nn.Module):
             if self.matching_algorithm=='greedy':
                 # greedy search for nearest neighbor
                 for nn_cnt in range(self.k):
-                _, _, idx_neighbor, _ = nndistance(x_ref_cur, x_neighbor)
-                geo_res[tot : tot + x_coarse_cur.shape[0], nn_cnt, :] = x_neighbor.gather(dim=1, index=idx_neighbor[:,0].reshape(-1,1,1).repeat(1,1,3)).squeeze(1) - x_ref_cur[:,0,:]
-                # remove matched pairs
-                mask = torch.ones((x_neighbor.shape[0], x_neighbor.shape[1]), device=x_coarse.device)
-                mask.scatter_(1, idx_neighbor[:,0].reshape(-1,1), 0)
-                x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse_cur.shape[0],-1,3).contiguous()
-                if (nn_cnt < self.k-1):
-                    x_ref_cur = x_ref_cur[:, 1:, :].contiguous()
+                    _, _, idx_neighbor, _ = nndistance(x_ref_cur, x_neighbor)
+                    geo_res[tot : tot + x_coarse_cur.shape[0], nn_cnt, :] = x_neighbor.gather(dim=1, index=idx_neighbor[:,0].reshape(-1,1,1).repeat(1,1,3)).squeeze(1) - x_ref_cur[:,0,:]
+                    # remove matched pairs
+                    mask = torch.ones((x_neighbor.shape[0], x_neighbor.shape[1]), device=x_coarse.device)
+                    mask.scatter_(1, idx_neighbor[:,0].reshape(-1,1), 0)
+                    x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse_cur.shape[0],-1,3).contiguous()
+                    if (nn_cnt < self.k-1):
+                        x_ref_cur = x_ref_cur[:, 1:, :].contiguous()
             elif self.matching_algorithm=='assignment':
                 # solve linear assignment problem
                 x_neighbor_sq = torch.sum(x_neighbor*x_neighbor, dim=2, keepdim=True)
@@ -226,14 +226,14 @@ class PointResidualEncoder(nn.Module):
 
         if self.matching_algorithm=='greedy':
             for nn_cnt in range(self.k):
-            _, _, idx_neighbor, _ = nndistance(x_ref, x_neighbor)
-            geo_res[:, nn_cnt, :] = x_neighbor.gather(dim=1, index=idx_neighbor[:,0].reshape(-1,1,1).repeat(1,1,3)).squeeze(1) - x_ref[:,0,:]
-            # remove matched pairs
-            mask = torch.ones((x_neighbor.shape[0], x_neighbor.shape[1]), device=x_coarse.device)
-            mask.scatter_(1, idx_neighbor[:,0].reshape(-1,1), 0)
-            x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse.shape[0],-1,3).contiguous()
-            if (nn_cnt < self.k-1):
-                x_ref = x_ref[:, 1:, :].contiguous()
+                _, _, idx_neighbor, _ = nndistance(x_ref, x_neighbor)
+                geo_res[:, nn_cnt, :] = x_neighbor.gather(dim=1, index=idx_neighbor[:,0].reshape(-1,1,1).repeat(1,1,3)).squeeze(1) - x_ref[:,0,:]
+                # remove matched pairs
+                mask = torch.ones((x_neighbor.shape[0], x_neighbor.shape[1]), device=x_coarse.device)
+                mask.scatter_(1, idx_neighbor[:,0].reshape(-1,1), 0)
+                x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse.shape[0],-1,3).contiguous()
+                if (nn_cnt < self.k-1):
+                    x_ref = x_ref[:, 1:, :].contiguous()
         elif self.matching_algorithm=='assignment':
             # solve linear assignment problem
             x_neighbor_sq = torch.sum(x_neighbor*x_neighbor, dim=2, keepdim=True)
