@@ -6,11 +6,11 @@ modules:
     dus: 2
     entropy_bottleneck: 8
     scaling_ratio: -1 # key param
-    point_mul: -1 # key param
+    point_mul: 10 # key param
     skip_mode: -1 # key param
     noise: 0.125
     fit_num: 30
-    fit_radius: 20
+    fit_radius: 30
     sample_radius: 5
     res_enc:
         model: point_res_enc
@@ -18,7 +18,7 @@ modules:
         fc_dims: [128, 64, 16]
         residual_mode: quad_fitting
         fit_num: 30
-        fit_radius: 20
+        fit_radius: 24
         sample_radius: 5
     vox_enc:
         model: spcnn_down2
