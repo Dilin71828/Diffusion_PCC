@@ -13,6 +13,8 @@ import numpy as np
 from pccai.models.modules.pointnet import PointNet
 from pccai.models.utils import quad_fitting
 
+from third_party.torch_linear_assignment.torch_linear_assignment.assignment import batch_linear_assignment
+
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../third_party/nndistance'))
 from modules.nnd import NNDModule
 nndistance = NNDModule()
@@ -41,6 +43,7 @@ class PointResidualEncoder(nn.Module):
         self.fit_num = net_config.get('fit_num', 20)
         self.fit_radius = net_config.get('fit_radius', 20)
         self.sample_radius = net_config.get('sample_radius', 2)
+        self.matching_algorithm = net_config.get('matching_algorithm', 'greedy')
 
     def forward(self, x_orig, x_coarse, output_res = False, x_ref = None):
         if self.residual_mode=='center':
@@ -174,18 +177,26 @@ class PointResidualEncoder(nn.Module):
             x_neighbor[mask] = x_orig_cur[I[mask]] - x_coarse_rep[mask] # recompute the outlier distance
 
             # recompute distance through quad fitting result
-            # greedy search for nearest neighbor
-            #x_ref = quad_fitting(x_coarse_cur, self.fit_num, self.fit_radius, 'predefined', self.k, self.sample_radius)  #[B, N, Dim]
-            # sequential searching with nndistance (make sure bijection)
-            for nn_cnt in range(self.k):
-                _, _, idx_neighbor, _ = nndistance(x_ref_cur, x_neighbor)
-                geo_res[tot : tot + x_coarse_cur.shape[0], nn_cnt, :] = x_neighbor.gather(dim=1, index=idx_neighbor[:,0].reshape(-1,1,1).repeat(1,1,3)).squeeze(1) - x_ref_cur[:,0,:]
-                # remove matched pairs
-                mask = torch.ones((x_neighbor.shape[0], x_neighbor.shape[1]), device=x_coarse.device)
-                mask.scatter_(1, idx_neighbor[:,0].reshape(-1,1), 0)
-                x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse_cur.shape[0],-1,3).contiguous()
-                if (nn_cnt < self.k-1):
-                    x_ref_cur = x_ref_cur[:, 1:, :].contiguous()
+            if self.matching_algorithm=='greedy':
+                # greedy search for nearest neighbor
+                for nn_cnt in range(self.k):
+                    _, _, idx_neighbor, _ = nndistance(x_ref_cur, x_neighbor)
+                    geo_res[tot : tot + x_coarse_cur.shape[0], nn_cnt, :] = x_neighbor.gather(dim=1, index=idx_neighbor[:,0].reshape(-1,1,1).repeat(1,1,3)).squeeze(1) - x_ref_cur[:,0,:]
+                    # remove matched pairs
+                    mask = torch.ones((x_neighbor.shape[0], x_neighbor.shape[1]), device=x_coarse.device)
+                    mask.scatter_(1, idx_neighbor[:,0].reshape(-1,1), 0)
+                    x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse_cur.shape[0],-1,3).contiguous()
+                    if (nn_cnt < self.k-1):
+                        x_ref_cur = x_ref_cur[:, 1:, :].contiguous()
+            elif self.matching_algorithm=='assignment':
+                # solve linear assignment problem
+                x_neighbor_sq = torch.sum(x_neighbor*x_neighbor, dim=2, keepdim=True)
+                x_ref_sq = torch.sum(x_ref_cur*x_ref_cur, dim=2, keepdim=True)
+                dist = x_ref_sq - 2*torch.matmul(x_ref_cur, x_neighbor.permute(0,2,1)) + x_neighbor_sq.permute(0,2,1)
+                idx_assignment = batch_linear_assignment(dist)
+                geo_res[tot:tot+x_coarse_cur.shape[0],:,:] = x_ref_cur - x_neighbor.gather(dim=1, index=idx_assignment.unsqueeze(2).repeat(1,1,3))
+            else:
+                raise NotImplementedError(f"matching algorithm {self.matching_algorithm} not implemented!")
 
             tot += x_coarse_cur.shape[0]
         del I, x_coarse_rep, x_orig, x_coarse, mask, x_neighbor
@@ -210,17 +221,28 @@ class PointResidualEncoder(nn.Module):
         )) # True is outlier
         I[mask] = I[:, 0].unsqueeze(-1).repeat_interleave(self.k, dim=1)[mask] # get the indices of the first NN
         x_neighbor[mask] = x_orig[I[mask]] - x_coarse_rep[mask] # recompute the outlier distance
-        
+
         x_ref = quad_fitting(x_coarse, self.fit_num, self.fit_radius, 'predefined', self.k, self.sample_radius)
 
-        for nn_cnt in range(self.k):
-            _, _, idx_neighbor, _ = nndistance(x_ref, x_neighbor)
-            geo_res[:, nn_cnt, :] = x_neighbor.gather(dim=1, index=idx_neighbor[:,0].reshape(-1,1,1).repeat(1,1,3)).squeeze(1) - x_ref[:,0,:]
-            # remove matched pairs
-            mask = torch.ones((x_neighbor.shape[0], x_neighbor.shape[1]), device=x_coarse.device)
-            mask.scatter_(1, idx_neighbor[:,0].reshape(-1,1), 0)
-            x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse.shape[0],-1,3).contiguous()
-            if (nn_cnt < self.k-1):
-                x_ref = x_ref[:, 1:, :].contiguous()
+        if self.matching_algorithm=='greedy':
+            for nn_cnt in range(self.k):
+                _, _, idx_neighbor, _ = nndistance(x_ref, x_neighbor)
+                geo_res[:, nn_cnt, :] = x_neighbor.gather(dim=1, index=idx_neighbor[:,0].reshape(-1,1,1).repeat(1,1,3)).squeeze(1) - x_ref[:,0,:]
+                # remove matched pairs
+                mask = torch.ones((x_neighbor.shape[0], x_neighbor.shape[1]), device=x_coarse.device)
+                mask.scatter_(1, idx_neighbor[:,0].reshape(-1,1), 0)
+                x_neighbor = x_neighbor[mask.to(bool)].reshape(x_coarse.shape[0],-1,3).contiguous()
+                if (nn_cnt < self.k-1):
+                    x_ref = x_ref[:, 1:, :].contiguous()
+        elif self.matching_algorithm=='assignment':
+            # solve linear assignment problem
+            x_neighbor_sq = torch.sum(x_neighbor*x_neighbor, dim=2, keepdim=True)
+            x_ref_sq = torch.sum(x_ref*x_ref, dim=2, keepdim=True)
+            dist = x_ref_sq - 2*torch.matmul(x_ref, x_neighbor.permute(0,2,1)) + x_neighbor_sq.permute(0,2,1)
+            idx_assignment = batch_linear_assignment(dist)
+            geo_res = x_ref - x_neighbor.gather(dim=1, index=idx_assignment.unsqueeze(2).repeat(1,1,3))
+        else:
+            raise NotImplementedError(f"matching algorithm {self.matching_algorithm} not implemented!")
+        
         del I, mask, x_neighbor, x_ref, x_coarse_rep, x_orig, x_coarse
         return geo_res
