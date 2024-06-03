@@ -10,7 +10,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from pccai.utils.misc import sample_x_10, sample_y_10
+from pccai.utils.misc import sample_x_10, sample_y_10, sample_x_5, sample_y_5
 
 import faiss
 import faiss.contrib.torch_utils
@@ -202,6 +202,9 @@ def quad_fitting(x_coarse, fit_num = 50, fit_radius = 20, sample_mode = 'random'
         if sample_num==10:
             sample_x = torch.from_numpy(sample_x_10).float().to(x_coarse.device).reshape(1, -1, 1).repeat(batch_size, 1, 1)*sample_radius
             sample_y = torch.from_numpy(sample_y_10).float().to(x_coarse.device).reshape(1, -1, 1).repeat(batch_size, 1, 1)*sample_radius
+        elif sample_num==5:
+            sample_x = torch.from_numpy(sample_x_5).float().to(x_coarse.device).reshape(1, -1, 1).repeat(batch_size, 1, 1)*sample_radius
+            sample_y = torch.from_numpy(sample_y_5).float().to(x_coarse.device).reshape(1, -1, 1).repeat(batch_size, 1, 1)*sample_radius
         else:
             raise NotImplementedError(f'The pattern to sample {sample_num} points is not defined.')
         pass
