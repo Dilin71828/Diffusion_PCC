@@ -25,7 +25,7 @@ modules:
         t_emb_dim: 8
         feature_dim: 16
         init_method: quad
-        num_points_fit: 50
+        num_points_fit: 30
         thres_dist: 20
         sample_radius: 2
         loss_mode: CD
