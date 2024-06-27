@@ -108,6 +108,7 @@ class DiffusionGeoResCompressionCodec(PccCodecBase):
         """
         Decompress all the transform blocks of a point cloud from a file.
         """
+        print(f'Debug: files: {filename}')
         stat_dict = {
             'all_dec_time': 0,
             'base_dec_time': 0,
@@ -133,7 +134,7 @@ class DiffusionGeoResCompressionCodec(PccCodecBase):
             else:
                 pc_rec = torch.vstack((
                     pc_rec, self.postprocess(
-                        self.pccnet.decompress(filename[cnt_slice * (1 if self.pccnet.skip_mode else 3)], 
+                        self.pccnet.decompress(filename[cnt_slice * 3], 
                             string_set, min_v_set, max_v_set, shape_set, base_dec_time))
                     )
                 )

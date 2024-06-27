@@ -18,14 +18,14 @@ modules:
         dims: [8, 64, 32]
     res_dec:
         model: diffusion_decoder_v2
+        diffusion_mode: jointly
         training_steps: 200
         beta_1: 0.0001
         beta_T: 0.05
         num_points: 10
         t_emb_dim: 8
         feature_dim: 16
-        init_method: quad
-        num_points_fit: 30
+        init_method: gaussian
+        num_points_fit: 50
         thres_dist: 20
-        sample_radius: 2
         loss_mode: CD

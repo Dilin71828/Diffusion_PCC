@@ -18,6 +18,7 @@ modules:
         dims: [8, 64, 32]
     res_dec:
         model: diffusion_decoder_v2
+        diffusion_mode: jointly
         training_steps: 200
         beta_1: 0.0001
         beta_T: 0.05
